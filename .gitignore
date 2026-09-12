@@ -1,0 +1,13 @@
+# —— 与本项目无关的独立工程（三国万象 Node 项目，不纳入本仓库）——
+地图/
+
+# —— Python 运行缓存 ——
+__pycache__/
+*.pyc
+*.pyo
+
+# —— 编辑器与系统文件 ——
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
