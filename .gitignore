@@ -6,6 +6,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# —— 玩家存档（本地数据，不入库）——
+saves/
+
 # —— 编辑器与系统文件 ——
 .idea/
 .vscode/
