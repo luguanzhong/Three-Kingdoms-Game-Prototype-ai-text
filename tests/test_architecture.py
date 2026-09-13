@@ -20,22 +20,46 @@ import 夹具
 # 随机相关关键字（覆盖标准库 random / secrets 与常见随机调用）
 随机关键字 = ("random", "randint", "randrange", "shuffle", "choice", "choices",
               "uniform", "sample", "getrandbits", "seed", "secrets", "urandom")
-关键字模式 = re.compile(r"(" + "|".join(随机关键字) + r")", re.IGNORECASE)
+# 长词优先（避免 choice 抢先匹配 choices），并用词边界避免命中 randomize 这类无关标识符
+关键字模式 = re.compile(r"(?<![A-Za-z_])(" + "|".join(sorted(随机关键字, key=len, reverse=True))
+                    + r")(?![A-Za-z_])", re.IGNORECASE)
 # 允许的标准库模块（生产代码只应使用这些 + 本地模块）
 标准库白名单 = {"os", "sys", "time", "json", "io", "contextlib", "shutil",
-                "tempfile", "importlib", "importlib.util", "py_compile"}
+                "tempfile", "importlib", "importlib.util", "py_compile",
+                "logging", "argparse"}
+
+
+def 是关键字参数(行, 匹配):
+    """判断命中是否为"关键字参数赋值"（如 argparse 的 choices=[...]）。
+
+    标准库 argparse 的合法参数名恰好叫 choices，因此这类写法不算随机调用；
+    真正的随机调用形如 random.choices(...) / choices(...)，命中后紧跟的是左括号而非等号。
+    """
+    余下 = 行[匹配.end():]
+    return 余下.lstrip().startswith("=")
 
 
 class 架构测试(unittest.TestCase):
 
     def test_架构_生产模块不含随机调用(self):
-        """逐文件逐行扫描，失败时给出 文件:行号:内容。"""
+        """逐文件逐行扫描，失败时给出 文件:行号:内容；`xxx=` 形式的关键字参数不计为随机调用。"""
         命中 = []
         for 文件名 in 夹具.生产模块:
             for 行号, 行 in enumerate(夹具.源码行们(文件名), 1):
                 for 匹配 in 关键字模式.finditer(行):
+                    if 是关键字参数(行, 匹配):
+                        continue
                     命中.append(f"{文件名}:{行号}: 出现随机关键字 {匹配.group(0)!r} → {行.strip()}")
         self.assertEqual(命中, [], "生产代码出现随机调用：\n" + "\n".join(命中))
+
+    def test_架构_关键字参数白名单确实生效且不放过真实调用(self):
+        """自检：确认白名单只放过 `choices=` 这类写法，真正的随机调用仍会被判定为命中。"""
+        假行 = "    解析器.add_argument('--log-level', choices=['DEBUG'])"
+        匹配 = 关键字模式.search(假行)
+        self.assertIsNotNone(匹配)
+        self.assertTrue(是关键字参数(假行, 匹配), "关键字参数写法应被白名单放过")
+        真行 = "    x = random.choices([1, 2], k=1)"
+        self.assertFalse(是关键字参数(真行, 关键字模式.search(真行)), "真实随机调用不应被放过")
 
     def test_架构_生产模块不导入随机库(self):
         命中 = []

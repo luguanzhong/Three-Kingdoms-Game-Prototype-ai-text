@@ -20,7 +20,11 @@
     python config_loader.py            # 校验 config/ 目录，成功打印 [配置校验] 通过
 """
 import json
+import logging
 import os
+
+# M5：日志（默认不输出，由入口按 --log-level 配置；日志不替代面向用户的提示文本）
+日志 = logging.getLogger("蜀汉突围.配置")
 
 # —— 配置文件 → 合并后配置顶层键 的映射 ——
 配置文件名映射 = {
@@ -435,11 +439,14 @@ def 载入配置(配置目录=None, 严格=False):
         文本 = "\n".join("  · " + 一条 for 一条 in 错误)
         最后错误信息 = f"检测到 {len(错误)} 处配置问题：\n{文本}\n  提示：修改 config/ 下对应文件后重新运行；" \
                        f"或执行 python config_loader.py 单独校验；删除 config/ 可回退内置默认值。"
+        日志.warning("配置存在 %d 处问题，将回退内置默认值；首个问题：%s", len(错误), 错误[0])
         if 严格:
             raise 配置错误(最后错误信息)
         配置 = 内置默认配置()      # 非严格模式：整体回退，确保非法值绝不进入游戏逻辑
     else:
         最后错误信息 = ""
+        日志.info("配置加载完成：目录 %s ｜ 数值项 %d / 字符串项 %d / 列表项 %d",
+                 配置目录, len(数值规则), len(字符串规则), len(列表规则))
 
     return 配置
 

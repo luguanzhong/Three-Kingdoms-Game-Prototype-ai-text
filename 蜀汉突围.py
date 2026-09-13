@@ -23,6 +23,7 @@
 【技术约束】纯Python标准库（os / sys / time），全中文注释与变量名。
 """
 
+import logging
 import os
 import sys
 import time
@@ -38,6 +39,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config_loader
 import save_manager     # M3：存档 / 读档模块（同目录）
 
+# M5：日志（标准库 logging）。日志用于记录启动、配置、存档与关键状态变化，
+# 不替代面向用户的提示文本——玩不到的信息仍以可读提示直接打印。
+日志 = logging.getLogger("蜀汉突围")
+日志格式 = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+
+def 配置日志(级别="WARNING"):
+    """M5：初始化日志级别与格式（默认 WARNING，可用 --log-level 调整；输出到 stderr）。"""
+    级别值 = getattr(logging, str(级别).upper(), logging.WARNING)
+    logging.basicConfig(level=级别值, format=日志格式, datefmt="%H:%M:%S", stream=sys.stderr)
+    日志.setLevel(级别值)
+    return 级别值
+
 # M2：加载外部配置（config/ 目录）。非法配置不崩溃——回退内置默认值并留下明确错误供主循环提示；
 # 内置默认值与抽离前的硬编码数值逐位一致，因此默认行为与原版完全相同。
 配置 = config_loader.载入配置()
@@ -49,7 +63,8 @@ import save_manager     # M3：存档 / 读档模块（同目录）
 # ═══════════════════════════════════════════════════════════════════════════
 
 # —— 全局常量 ——
-游戏版本 = "v0.3.0"              # M3：写入存档用于记录规则版本（M2/M3 均未改规则，沿用 v0.3.0）
+游戏版本 = "v0.3.0"              # 规则版本（写入存档；M2-M5 均未改规则，沿用 v0.3.0）
+发布版本 = "v1.0.0"              # M5：工程发布版本（命令行 --version 显示，与 Git 标签一致）
 总回合数 = 20                    # 主循环运行的总回合数
 初始兵力 = 18000                 # 蜀汉开局兵力（含永安3000；用于结局判定"兵力>初始值"）
 险关位置 = tuple(配置["计谋"]["据险而守"]["前置地形"])   # M2：来自 config/schemes.json（据险而守.前置地形）
@@ -1292,11 +1307,14 @@ def 自动策略():
                 记录(f"（自动演示）{姓名}转为练兵。")
 
 
-def 主循环(载入存档名=None):
+def 主循环(载入存档名=None, 自动演示=None):
     """需求7：主循环。运行20回合；每回合状态变化后清屏、打印当前局势、暂停0.5秒。
     v0.3.0：回合以建安年月推进（每回合结束月份+1），冬季有确定性惩罚。
-    M3：载入存档名 不为空时先读档再继续同一局（命令行 --load <名>），读档失败则退回新开局。"""
+    M3：载入存档名 不为空时先读档再继续同一局（命令行 --load <名>），读档失败则退回新开局。
+    M5：自动演示=True/False 时跳过模式选择（命令行 --demo），None 则保持原交互询问。"""
     global 当前年份, 当前月份, 回合计数, 季节
+    日志.info("游戏启动：发布版本 %s ｜ 规则版本 %s ｜ 载入存档=%s ｜ 自动演示=%s",
+             发布版本, 游戏版本, 载入存档名 or "无", 自动演示)
     print("════════════════════════════════════════════")
     print("  三国 · 蜀汉突围 —— 公元208年，夏口")
     print("  你是诸葛亮举荐的幕僚，专精战术应变。")
@@ -1307,19 +1325,26 @@ def 主循环(载入存档名=None):
         # M3：从存档继续——跳过开局日期重置与模式选择，沿用存档内的自动/交互模式
         成功, 提示 = save_manager.载入游戏(globals(), 载入存档名)
         print(提示)
-        if not 成功:
+        if 成功:
+            日志.info("已从存档继续：%s", 载入存档名)
+        else:
+            日志.warning("读档失败，改为新开局：%s", 提示)
             print("  （将改为新开局）")
             载入存档名 = None
     if not 载入存档名:
-        print("请选择运行模式：")
-        print("  1. 扮演幕僚（交互决策）")
-        print("  2. 自动演示（默认策略推演20回合，无人值守）")
-        try:
-            模式 = input("请选择：").strip()
-        except EOFError:
-            print("\n输入已结束（stdin 关闭），程序退出。可用 --load <存档名> 继续此前存档。")
-            return
-        自动 = (模式 == "2")
+        if 自动演示 is None:
+            print("请选择运行模式：")
+            print("  1. 扮演幕僚（交互决策）")
+            print("  2. 自动演示（默认策略推演20回合，无人值守）")
+            try:
+                模式 = input("请选择：").strip()
+            except EOFError:
+                print("\n输入已结束（stdin 关闭），程序退出。可用 --load <存档名> 继续此前存档。")
+                return
+            自动 = (模式 == "2")
+        else:
+            自动 = bool(自动演示)
+            print("运行模式：" + ("自动演示（命令行 --demo）" if 自动 else "扮演幕僚（命令行指定）"))
         全局["自动模式"] = 自动
         当前年份, 当前月份, 回合计数, 季节 = 208, 9, 1, "秋季"   # v0.3.0：开局重置日期
     else:
@@ -1327,10 +1352,14 @@ def 主循环(载入存档名=None):
     if 配置警告:            # M2：配置有问题时明确提示，但照常用内置默认值运行
         print("【配置警告】" + 配置警告)
         print("  （本次运行使用内置默认配置，行为与原始版本一致）\n")
+        日志.warning("配置存在问题，本次运行使用内置默认值：%s", 配置警告.splitlines()[0])
     清屏()
     打印局势()
     while 回合计数 <= 总回合数:
         print("\n【第 " + str(回合计数) + " 回合 · 决策阶段】（" + 显示日期() + "）")
+        日志.info("第 %d 回合（%s）：兵力=%d 粮草=%d 压力=%d 东吴观望=%d 外交=%s",
+                 回合计数, 显示日期(), 蜀汉["兵力"], 蜀汉["粮草"],
+                 蜀汉["魏国压力"], 东吴["观望态度"], 全局["东吴外交倾向"])
         if 自动:
             自动策略()
         else:
@@ -1349,6 +1378,7 @@ def 主循环(载入存档名=None):
         # —— 结局判定 ——
         结局 = 结局判定()
         if 结局 is not None:
+            日志.info("游戏结束：%s（第 %d 回合，%s）", 结局, 回合计数, 显示日期())
             print("\n" + "★" * 40)
             print(结局)
             将领结局()
@@ -1359,19 +1389,67 @@ def 主循环(载入存档名=None):
         回合计数 += 1
 
 
+def 解析命令行(参数列表=None):
+    """M5：命令行解析（标准库 argparse）。仅在 __main__ 中调用，import 本模块不会解析 argv。"""
+    import argparse
+    解析器 = argparse.ArgumentParser(
+        prog="python 蜀汉突围.py",
+        description="三国 · 蜀汉突围 —— 纯标准库、零随机的确定性策略游戏",
+        epilog="不带参数即新开局；游戏内决策菜单第 7 项可存档 / 读档。")
+    解析器.add_argument("--version", action="version",
+                     version=f"蜀汉突围 工程发布版本 {发布版本}（游戏规则版本 {游戏版本}）")
+    解析器.add_argument("--load", "-l", nargs="?", const="save1", metavar="存档名",
+                     help="读取 saves/<存档名>.json 并继续该局；不给名字时读 save1")
+    解析器.add_argument("--demo", action="store_true",
+                     help="自动演示：无人值守推演 20 回合（等价于交互模式输入 2）")
+    解析器.add_argument("--list-saves", action="store_true",
+                     help="列出 saves/ 下的全部存档后退出")
+    解析器.add_argument("--check-config", action="store_true",
+                     help="校验配置文件后退出（有问题返回码 1）")
+    解析器.add_argument("--config", metavar="目录", default=None,
+                     help="指定配置目录（默认：程序同级的 config/）")
+    解析器.add_argument("--log-level", metavar="级别", default="WARNING",
+                     choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                     help="日志级别（默认 WARNING；INFO 会逐回合记录关键状态）")
+    return 解析器.parse_args(参数列表)
+
+
+def 主函数(参数列表=None):
+    """M5：命令行主入口，返回进程退出码。"""
+    global 配置, 配置警告, 险关位置
+    参数 = 解析命令行(参数列表)
+    配置日志(参数.log_level)
+
+    if 参数.config:
+        # M5：改用指定的配置目录；险关位置是启动期派生量，需同步重算
+        配置 = config_loader.载入配置(配置目录=参数.config)
+        配置警告 = config_loader.最后错误信息
+        险关位置 = tuple(配置["计谋"]["据险而守"]["前置地形"])
+        日志.info("已切换配置目录：%s", 参数.config)
+
+    if 参数.check_config:
+        config_loader.载入配置(配置目录=参数.config, 严格=False)
+        问题 = config_loader.最后错误信息
+        if 问题:
+            print("[配置校验] 未通过\n" + 问题)
+            日志.warning("配置校验未通过")
+            return 1
+        print("[配置校验] 通过：配置文件合法（%s）" % (参数.config or "默认 config/"))
+        日志.info("配置校验通过")
+        return 0
+
+    if 参数.list_saves:
+        成功, 提示, 条目 = save_manager.列出存档()
+        print(提示)
+        for 项 in 条目:
+            print(f"  · {项['存档名']}：{项['状态']}"
+                  + (f"；{项['保存时间']}；{项['摘要']}" if 项["摘要"] else ""))
+        return 0
+
+    # --load 优先于 --demo：读档后沿用存档内的运行模式
+    主循环(载入存档名=参数.load, 自动演示=True if 参数.demo else None)
+    return 0
+
+
 if __name__ == "__main__":
-    # M3：命令行入口——不带参数即正常新开局；--load <存档名> 读取 saves/<名>.json 并继续该局
-    载入存档名 = None
-    参数 = sys.argv[1:]
-    if 参数 and 参数[0] in ("--load", "-l"):
-        if len(参数) >= 2:
-            载入存档名 = 参数[1]
-        else:
-            print("用法：python 蜀汉突围.py [--load <存档名>]")
-            raise SystemExit(2)
-    elif 参数 and 参数[0] in ("--help", "-h"):
-        print("用法：python 蜀汉突围.py [--load <存档名>]")
-        print("  --load <存档名>  启动时读取 saves/<存档名>.json 并继续该局（默认名 save1）")
-        print("  不带参数         正常新开局；游戏内可用决策菜单第 7 项【存档 / 读档】")
-        raise SystemExit(0)
-    主循环(载入存档名=载入存档名)
+    raise SystemExit(主函数())
