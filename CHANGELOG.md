@@ -33,12 +33,27 @@
 - 架构用例的白名单凭据改为在 `legacy/` 中查找历史快照（断言强度不变）
 
 ### 修复
+- **干净环境实测发现的缺陷（用临时 venv 复现）**：`requirements.txt` 原本使用 UTF-8 中文注释，
+  而 `pip` 按系统区域编码（中文 Windows 为 GBK）读取该文件，导致 `pip install -r requirements.txt`
+  直接抛 `UnicodeDecodeError` 并以退出码 2 失败；现已改为纯 ASCII（约定：源码保留中文注释，
+  但**交给工具读取的文件必须 ASCII**）
+- **日志重定向乱码**：`sys.stdout` 已设为 UTF-8，而 `sys.stderr` 未设置，导致
+  `python main.py --demo --log-level INFO > log.txt` 重定向出来的日志按 GBK 落盘、在 UTF-8 环境中显示为乱码；
+  已同步为 stderr 也设置 UTF-8（仅影响输出编码，不涉及任何判定逻辑）
 - 更正本文件 v1.0.0 条目的用例总数笔误（73 → 74；`v1.0.0` 标签下实测为 74 个用例）
 
 ### 测试
-- `python run_tests.py` → **74 个用例通过**，用时 81.9 秒
-- `python run_tests.py --fast` → **70 个用例通过**，用时 10.9 秒
-- `python 自测_确定性判定.py` → **全部 126 项自测通过**
+- **干净环境验证**（新建临时 venv，其中只有 `pip`，且全部命令都在无关工作目录 `C:\` 下执行）：
+  - `python -m pip install -r requirements.txt` → 退出码 0，**未安装任何包**
+  - `python run_tests.py` → **74 个用例通过**，81.6 秒
+  - `python -m pytest tests -q` → **74 passed**，81.64 秒（额外装 pytest 仅为验证兼容性，
+    项目本身**不依赖** pytest，见 `requirements.txt`）
+  - `python main.py --demo --log-level INFO` → 退出码 0，跑满 20 回合达成「汉家尚有可为」结局，
+    1223 行输出与 22 行 INFO 日志均无编码异常
+  - 跨进程存档往返：进程 A 改兵力/粮草/日期/将领任务后保存 → 进程 B 全新解释器读档 →
+    兵力、粮草、日期、任务四项全部一致
+- 本机（非 venv）复测：`python run_tests.py` → **74 个用例通过**，81.9 秒；
+  `--fast` → **70 个用例通过**，10.9 秒；`python 自测_确定性判定.py` → **全部 126 项自测通过**
 - 命令行抽查：`--version` / `--check-config` / `--list-saves` / `--help` 全部正常
 
 ---

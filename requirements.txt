@@ -1,15 +1,27 @@
-# ══════════════════════════════════════════════════════════════════
-#  《三国·蜀汉突围》依赖声明
-# ══════════════════════════════════════════════════════════════════
-#  本工程为零第三方依赖项目：游戏本体、配置加载器、存档模块与测试体系
-#  全部只使用 Python 标准库（os / sys / time / json / logging / argparse /
-#  importlib / io / contextlib / tempfile / unittest / py_compile / re）。
+# ==================================================================
+#  San Guo - Shu Han Tu Wei  /  Dependencies
+# ==================================================================
+#  This project has ZERO third-party dependencies.
 #
-#  因此：
-#    · 不需要 create venv 之外的任何安装步骤；
-#    · `python -m pip install -r requirements.txt` 可安全执行（不会安装任何包）；
-#    · 架构测试 tests/test_architecture.py 会逐行扫描生产代码，
-#      确保没有任何第三方 import 混进来（这条约束是被自动校验的，不是口头承诺）。
+#  The game itself, the config loader, the save manager and the whole
+#  test suite use ONLY the Python standard library:
+#      os / sys / time / json / logging / argparse / importlib /
+#      io / contextlib / tempfile / unittest / py_compile / re
 #
-#  开发与测试环境：Python 3.13.1（Windows 11）
-#  未做多版本兼容矩阵验证，故不声明具体最低版本；如需用于旧解释器请自行实测。
+#  Therefore:
+#    - No installation step is required after `git clone`;
+#    - `python -m pip install -r requirements.txt` is safe to run and
+#      installs nothing;
+#    - tests/test_architecture.py scans every import statement of the
+#      production modules and fails if any non-stdlib module shows up,
+#      so "zero dependencies" is enforced by an automated test rather
+#      than by this comment.
+#
+#  NOTE: this file is intentionally kept pure ASCII. pip reads it with
+#  the system locale encoding (GBK / cp936 on Chinese Windows), so any
+#  UTF-8 non-ASCII comment here would break `pip install -r`.
+#
+#  Development environment: Python 3.13.1 on Windows 11.
+#  No multi-version compatibility matrix has been tested, so no strict
+#  minimum version is declared; the code uses no version-specific
+#  syntax and no type annotations.

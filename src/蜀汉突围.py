@@ -28,9 +28,14 @@ import os
 import sys
 import time
 
-# 尽力让 Windows 控制台以 UTF-8 输出中文
+# 尽力让 Windows 控制台以 UTF-8 输出中文（stdout 与 stderr 保持一致：
+# 仅设 stdout 会导致 `--log-level INFO > log.txt` 重定向出来的日志按 GBK 落盘而乱码）
 try:
     sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+try:
+    sys.stderr.reconfigure(encoding="utf-8")
 except Exception:
     pass
 

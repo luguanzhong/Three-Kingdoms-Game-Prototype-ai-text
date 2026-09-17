@@ -126,7 +126,8 @@ python run_tests.py --fast     # 约 11 秒；完整版 python run_tests.py 约 
 | `--version` | 显示工程发布版本与游戏规则版本 |
 | `--help` / `-h` | 显示全部参数说明 |
 
-**日志说明**：用标准库 `logging` 输出到 **stderr**，默认 `WARNING`（不刷屏）。
+**日志说明**：用标准库 `logging` 输出到 **stderr**（已设为 UTF-8，重定向到文件也不会乱码），
+默认 `WARNING`（不刷屏）。
 `--log-level INFO` 会记录启动、配置加载、每回合关键状态、存档读写与最终结局。
 日志**不替代**面向玩家的中文提示：出错时仍会打印可操作的中文说明，日志只是附带的技术记录。
 
@@ -384,6 +385,8 @@ python 自测_确定性判定.py    → 全部 126 项自测通过。
 
 - 实测环境：Python 3.13.1 / Windows 11；全量耗时主要花在游戏内每回合 0.5 秒的显示停顿上。
 - 使用标准库 `unittest`，**未引入 pytest**（保持零依赖）；`run_tests.py` 提供统一的汇总输出与退出码。
+  （已实测：若你本地已装 pytest，`python -m pytest tests -q` 同样能直接跑通全部 74 个用例；
+  项目本身**不依赖** pytest，因此它不在 `requirements.txt` 中。）
 - **目前没有 CI 配置文件**：一键入口与退出码已经就绪，接 GitHub Actions 只需几行 YAML。
 
 ---
