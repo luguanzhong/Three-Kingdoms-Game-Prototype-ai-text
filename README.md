@@ -12,7 +12,7 @@
 
 ```bash
 git clone https://github.com/luguanzhong/Three-Kingdoms-Game-Prototype-ai-text.git
-cd 三国test
+cd Three-Kingdoms-Game-Prototype-ai-text   # 目录名即仓库名
 python main.py                # 开始玩（零依赖，无需 pip install）
 python run_tests.py --fast    # 跑测试，约 11 秒
 ```
@@ -101,7 +101,7 @@ python -m pip install -r requirements.txt   # 可安全执行，不会安装任�
 ```bash
 # 1. 拿到仓库
 git clone https://github.com/luguanzhong/Three-Kingdoms-Game-Prototype-ai-text.git
-cd 三国test
+cd Three-Kingdoms-Game-Prototype-ai-text     # 目录名即仓库名；本地已有该目录则直接 cd 进去即可
 
 # 2. 确认环境（只需 Python）
 python --version              # Windows 若无 python 命令，可用 py --version
@@ -232,7 +232,7 @@ python run_tests.py --fast     # 约 11 秒；完整版 python run_tests.py 约 
 ## 四、项目结构
 
 ```text
-三国test/
+<仓库根目录>/                    # clone 后即仓库名目录；以下均相对此目录
 ├── main.py                     # ★ 统一入口：python main.py（= python src/蜀汉突围.py）
 ├── run_tests.py                # ★ 一键测试入口（--fast / 全量，退出码可用于 CI）
 ├── 自测_确定性判定.py           # 原始自测脚本：126 项断言，可单独运行
