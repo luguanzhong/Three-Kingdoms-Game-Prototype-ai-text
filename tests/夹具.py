@@ -11,17 +11,20 @@ import os
 import sys
 
 仓库根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if 仓库根目录 not in sys.path:
-    sys.path.insert(0, 仓库根目录)
+源码目录 = os.path.join(仓库根目录, "src")
+for 目录 in (仓库根目录, 源码目录):
+    if 目录 not in sys.path:
+        sys.path.insert(0, 目录)
 
-# 生产模块清单：架构检查与"仅标准库"白名单都以它为准（历史备份快照不参与扫描）
-生产模块 = ("蜀汉突围.py", "config_loader.py", "save_manager.py")
+# 生产模块清单（相对仓库根目录的路径）：架构检查与"仅标准库"白名单都以它为准
+# （历史备份快照在 legacy/ 下，不参与扫描）
+生产模块 = ("src/蜀汉突围.py", "src/config_loader.py", "src/save_manager.py")
 # 允许出现的本地模块名（非第三方）
 本地模块名 = ("config_loader", "save_manager")
 
 
 def 载入模块(文件名, 模块名):
-    """按路径加载仓库根目录下的 .py 文件；每次调用都得到全新模块状态。"""
+    """按路径加载仓库内的 .py 文件（相对仓库根目录）；每次调用都得到全新模块状态。"""
     路径 = os.path.join(仓库根目录, 文件名)
     规格 = importlib.util.spec_from_file_location(模块名, 路径)
     模块 = importlib.util.module_from_spec(规格)
@@ -31,17 +34,17 @@ def 载入模块(文件名, 模块名):
 
 def 载入游戏():
     """加载一份全新的游戏模块（不会触发主循环）。"""
-    return 载入模块("蜀汉突围.py", "蜀汉突围_测试实例")
+    return 载入模块("src/蜀汉突围.py", "蜀汉突围_测试实例")
 
 
 def 载入配置模块():
     """加载一份全新的配置加载模块。"""
-    return 载入模块("config_loader.py", "config_loader_测试实例")
+    return 载入模块("src/config_loader.py", "config_loader_测试实例")
 
 
 def 载入存档模块():
     """加载一份全新的存档模块。"""
-    return 载入模块("save_manager.py", "save_manager_测试实例")
+    return 载入模块("src/save_manager.py", "save_manager_测试实例")
 
 
 def 捕获输出(可调用, *参数, **关键字):

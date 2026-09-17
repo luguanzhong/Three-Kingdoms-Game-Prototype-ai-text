@@ -17,9 +17,9 @@
 ## 1. 启动与命令行（20 秒）
 
 ```bash
-python 蜀汉突围.py --version      # 工程发布版本 v1.0.0（游戏规则版本 v0.3.0）
-python 蜀汉突围.py --help         # 全部命令行参数
-python 蜀汉突围.py --demo         # 无人值守自动演示：20 回合 × 0.5 秒，约 12 秒跑完
+python main.py --version      # 工程发布版本 v1.0.0（游戏规则版本 v0.3.0）
+python main.py --help         # 全部命令行参数
+python main.py --demo         # 无人值守自动演示：20 回合 × 0.5 秒，约 12 秒跑完
 ```
 
 要讲的一句：**"发布版本和规则版本是分开记录的——工程迭代到 v1.0.0，但游戏规则本身一直停在 v0.3.0，因为我们这几轮只做工程化，没动过数值。"**
@@ -35,7 +35,7 @@ python 蜀汉突围.py --demo         # 无人值守自动演示：20 回合 × 
 ## 2. 核心玩法演示（60 秒，交互模式）
 
 ```bash
-python 蜀汉突围.py                # 输入 1 进入"扮演幕僚"
+python main.py                # 输入 1 进入"扮演幕僚"
 ```
 
 按顺序输入以下菜单项（每回合只能执行一件"大事"）：
@@ -51,12 +51,12 @@ python 蜀汉突围.py                # 输入 1 进入"扮演幕僚"
 演示结束后如需查看战果：
 
 ```bash
-python 蜀汉突围.py --list-saves          # 列出存档与状态
-python 蜀汉突围.py --load demo1          # 从刚才的存档继续同一局（会提示恢复到第几回合）
+python main.py --list-saves          # 列出存档与状态
+python main.py --load demo1          # 从刚才的存档继续同一局（会提示恢复到第几回合）
 ```
 
 > 想现场演示"改数值不改代码"：把 `config/diplomacy.json` 里 `亲蜀.好感调整` 由 `3` 改成 `7`，
-> 再跑 `python 蜀汉突围.py --demo`，日志/近事里的好感增量立刻变成 `+7`，改回即恢复。
+> 再跑 `python main.py --demo`，日志/近事里的好感增量立刻变成 `+7`，改回即恢复。
 
 ---
 
@@ -80,18 +80,18 @@ python -m unittest discover -s tests -p "test_architecture.py" -v   # 只跑零�
 ## 4. 工程结构演示（40 秒）
 
 ```bash
-python 蜀汉突围.py --check-config   # 配置校验：非法配置给出「文件 + 字段 + 期望 + 实际」
-python 蜀汉突围.py --log-level INFO --demo | more   # 日志：启动/配置/每回合关键状态/结局
+python main.py --check-config   # 配置校验：非法配置给出「文件 + 字段 + 期望 + 实际」
+python main.py --log-level INFO --demo | more   # 日志：启动/配置/每回合关键状态/结局
 ```
 
 指给对方的四层结构（配合 `docs/架构图.md`）：
 
 | 层 | 文件 | 一句话 |
 | :--- | :--- | :--- |
-| 入口与日志 | `蜀汉突围.py`（argparse + logging） | 命令行参数、日志级别；不带参数即原交互启动 |
-| 规则与状态 | `蜀汉突围.py` 模块1/2/3 | 状态字面量、确定性判定纯函数、主循环 13 步流水线 |
-| 配置层 | `config/*.json` + `config_loader.py` | 兵种/计谋/季节/外交/战斗五类常量可改，非法配置明确报错并整体回退 |
-| 存档层 | `saves/*.json` + `save_manager.py` | 版本化 JSON 存档、损坏检测、原子写入、`--load` 续局 |
+| 入口与日志 | `src/蜀汉突围.py`（argparse + logging） | 命令行参数、日志级别；不带参数即原交互启动 |
+| 规则与状态 | `src/蜀汉突围.py` 模块1/2/3 | 状态字面量、确定性判定纯函数、主循环 13 步流水线 |
+| 配置层 | `config/*.json` + `src/config_loader.py` | 兵种/计谋/季节/外交/战斗五类常量可改，非法配置明确报错并整体回退 |
+| 存档层 | `saves/*.json` + `src/save_manager.py` | 版本化 JSON 存档、损坏检测、原子写入、`--load` 续局 |
 | 测试体系 | `tests/` + `run_tests.py` + `自测_确定性判定.py` | 一键跑通、分类清晰、旧断言不丢 |
 
 ---

@@ -15,12 +15,20 @@ import os
 import io
 import json
 import shutil
+import sys
 import tempfile
 import contextlib
+
+# 生产模块位于 src/，本脚本位于仓库根目录：先把 src/ 加入模块搜索路径
+项目根目录 = os.path.dirname(os.path.abspath(__file__))
+源码目录 = os.path.join(项目根目录, "src")
+if 源码目录 not in sys.path:
+    sys.path.insert(0, 源码目录)
+
 import config_loader
 import save_manager
 
-游戏文件 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "蜀汉突围.py")
+游戏文件 = os.path.join(源码目录, "蜀汉突围.py")
 
 
 def 载入游戏():
@@ -272,7 +280,7 @@ print("【八】东吴背刺直接结算")
 # —— 九、M2 配置系统（加载 / 校验 / 改值生效）——
 print("【九】M2 配置系统（加载 / 校验 / 改值生效）")
 游戏目录 = os.path.dirname(os.path.abspath(游戏文件))
-配置目录 = os.path.join(游戏目录, "config")
+配置目录 = os.path.join(项目根目录, "config")
 临时根 = tempfile.mkdtemp(prefix="蜀汉配置测试_")
 
 

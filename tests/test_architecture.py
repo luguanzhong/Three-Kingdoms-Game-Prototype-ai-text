@@ -2,8 +2,8 @@
 """架构测试：零随机约束、仅标准库依赖、可编译性与判定函数的确定性。
 
 白名单说明（记录原因，避免误伤）：
-1. 扫描范围仅限 `夹具.生产模块`（蜀汉突围.py / config_loader.py / save_manager.py）——
-   `蜀汉突围_*备份.py` 是历史版本快照、不参与运行，扫描它只会产生噪声。
+1. 扫描范围仅限 `夹具.生产模块`（src/ 下的 蜀汉突围.py / config_loader.py / save_manager.py）——
+   `legacy/蜀汉突围_*备份.py` 是历史版本快照、不参与运行，扫描它只会产生噪声。
 2. 本目录下的测试代码允许出现 `random` 等字样（它们正是用来断言"生产代码不含这些字样"的），
    因此不纳入扫描；这是有意的白名单，不是漏检。
 """
@@ -89,7 +89,8 @@ class 架构测试(unittest.TestCase):
         for 文件名 in 夹具.生产模块:
             try:
                 py_compile.compile(os.path.join(夹具.仓库根目录, 文件名),
-                                   cfile=os.path.join(临时, 文件名 + "c"), doraise=True)
+                                   cfile=os.path.join(临时, os.path.basename(文件名) + "c"),
+                                   doraise=True)
             except py_compile.PyCompileError as 异常:
                 self.fail(f"{文件名} 编译失败：{异常}")
 
@@ -113,8 +114,10 @@ class 架构测试(unittest.TestCase):
         self.assertEqual(甲.总回合数, 乙.总回合数)
 
     def test_架构_白名单内确实存在历史备份与测试目录(self):
-        """确保白名单不是借口：目录里确实有需要排除的备份与测试文件。"""
-        备份 = [名 for 名 in os.listdir(夹具.仓库根目录)
+        """确保白名单不是借口：仓库里确实有需要排除的备份与测试文件。"""
+        备份目录 = os.path.join(夹具.仓库根目录, "legacy")
+        self.assertTrue(os.path.isdir(备份目录), "未找到 legacy/ 历史备份目录")
+        备份 = [名 for 名 in os.listdir(备份目录)
                if 名.startswith("蜀汉突围_") and 名.endswith("备份.py")]
         self.assertTrue(备份, "未找到历史备份快照（白名单前提不成立）")
         self.assertTrue(os.path.isdir(os.path.join(夹具.仓库根目录, "tests")))

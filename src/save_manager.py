@@ -58,9 +58,13 @@ import time
 存档名最大长度 = 32
 
 
+# 项目根目录：本文件位于 src/ 下，故取上一级；saves/ 固定挂在项目根（与启动时的工作目录无关）
+项目根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def 默认存档目录():
-    """存档目录：本模块同级的 saves/（与启动时的工作目录无关）。"""
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "saves")
+    """存档目录：项目根目录下的 saves/（与启动时的工作目录无关）。"""
+    return os.path.join(项目根目录, "saves")
 
 
 def 存档路径(存档名, 存档目录=None):

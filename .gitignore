@@ -1,16 +1,72 @@
-# —— 与本项目无关的独立工程（三国万象 Node 项目，不纳入本仓库）——
+# ══════════════════════════════════════════════════════════════════
+#  《三国·蜀汉突围》· .gitignore
+#  原则：只跟踪「源码 / 配置 / 测试 / 文档 / 历史快照」；
+#        运行产物、缓存、虚拟环境、IDE 与系统文件一律不入库。
+# ══════════════════════════════════════════════════════════════════
+
+# ── 与本项目无关的独立工程（"三国万象" Node 项目，约 908 MB，不纳入本仓库）──
 地图/
 
-# —— Python 运行缓存 ——
+# ── Python 字节码与缓存 ──
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 
-# —— 玩家存档（本地数据，不入库）——
-saves/
+# ── 虚拟环境 ──
+.venv/
+venv/
+env/
+ENV/
+.python-version
 
-# —— 编辑器与系统文件 ——
+# ── 打包 / 构建产物 ──
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ── 测试 / 检查工具的缓存与报告 ──
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ── IDE / 编辑器 ──
 .idea/
 .vscode/
+*.iml
+*.swp
+*.swo
+*~
+# 即使共享 .idea/ 目录，个人工作区文件也不该提交
+.idea/workspace.xml
+
+# ── 操作系统 ──
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
 desktop.ini
+$RECYCLE.BIN/
+
+# ── 临时文件 / 备份 ──
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# ── 运行日志（默认输出到 stderr，由 --log-level 控制；落盘日志不入库）──
+*.log
+logs/
+
+# ── 玩家存档（本地运行数据）──
+# 存档是可读 JSON，格式与版本号见 README「存档」一节；此处刻意不入库，
+# 避免把个人对局进度混进仓库。历史对局留档以 docs/游玩实录.txt 形式提供。
+saves/

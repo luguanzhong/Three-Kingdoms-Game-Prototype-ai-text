@@ -26,6 +26,9 @@ import os
 # M5：日志（默认不输出，由入口按 --log-level 配置；日志不替代面向用户的提示文本）
 日志 = logging.getLogger("蜀汉突围.配置")
 
+# 项目根目录：本文件位于 src/ 下，故取上一级；config/ 固定挂在项目根（与启动时的工作目录无关）
+项目根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # —— 配置文件 → 合并后配置顶层键 的映射 ——
 配置文件名映射 = {
     "units.json": "兵种",
@@ -395,14 +398,14 @@ def 载入配置(配置目录=None, 严格=False):
     """读取并校验配置。
 
     参数：
-      配置目录：默认为本文件同级的 config/ 目录（与启动时的工作目录无关）。
+      配置目录：默认为项目根目录下的 config/（与启动时的工作目录无关）。
       严格：True 时任何问题都抛出 配置错误；False 时打印/记录错误并回退内置默认值。
 
     返回：合并校验后的配置字典（严格模式失败会抛异常，不会返回）。
     """
     global 最后错误信息
     if 配置目录 is None:
-        配置目录 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
+        配置目录 = os.path.join(项目根目录, "config")
 
     配置 = 内置默认配置()
     错误 = []

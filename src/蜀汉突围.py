@@ -1393,7 +1393,8 @@ def 解析命令行(参数列表=None):
     """M5：命令行解析（标准库 argparse）。仅在 __main__ 中调用，import 本模块不会解析 argv。"""
     import argparse
     解析器 = argparse.ArgumentParser(
-        prog="python 蜀汉突围.py",
+        # 按实际入口显示：经 main.py 运行时显示 "python main.py"，直接运行本文件时显示本文件名
+        prog="python " + os.path.basename(sys.argv[0] or "main.py"),
         description="三国 · 蜀汉突围 —— 纯标准库、零随机的确定性策略游戏",
         epilog="不带参数即新开局；游戏内决策菜单第 7 项可存档 / 读档。")
     解析器.add_argument("--version", action="version",

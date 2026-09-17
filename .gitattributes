@@ -1,0 +1,48 @@
+# ══════════════════════════════════════════════════════════════════
+#  《三国·蜀汉突围》· .gitattributes
+#  目的：统一换行符策略，避免"整文件被改写"的假差异与跨平台脏工作区。
+#
+#  策略：仓库内一律以 LF 存储，检出也用 LF。
+#  这样 Windows 本地编辑、Linux / macOS clone、以及 GitHub 网页端显示的
+#  内容完全一致；任何人提交后 `git diff` 都只显示真实改动，
+#  不会出现"我只改了一行、diff 却是整个文件"的情况。
+# ══════════════════════════════════════════════════════════════════
+
+# 默认：自动识别文本文件并统一为 LF
+* text=auto eol=lf
+
+# ── 明确声明的文本类型 ──
+*.py        text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.json      text eol=lf
+*.toml      text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# ── 二进制文件：禁止换行转换，避免损坏 ──
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.bmp   binary
+*.ico   binary
+*.mp4   binary
+*.mov   binary
+*.zip   binary
+*.gz    binary
+*.exe   binary
+*.dll   binary
+*.pyd   binary
+*.pyc   binary
+
+# ── GitHub 语言统计：把本仓库正确识别为 Python 项目 ──
+# 前端 / 样式文件若将来引入，不计入主语言统计（本工程当前为纯 Python）
+*.html  linguist-documentation
+*.md    linguist-documentation
+docs/** linguist-documentation
