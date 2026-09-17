@@ -19,6 +19,14 @@
 - `.gitattributes`：统一换行符策略（仓库内一律 LF），消除 CRLF 噪音警告
 - `docs/images/.gitkeep`：为 README 的截图占位预留目录
 - `legacy/` 目录：收纳三个历史版本快照
+- **`LICENSE`（MIT）**：明确授权方式，README 同步增加协议徽章与说明
+
+### 发布相关
+- 统一 git 提交者身份为项目作者本人，并重写历史提交的作者 / 提交者信息
+  （原为占位符 `SanGuo Dev <sanguo@localhost>`，在 GitHub 上不会归属到账号）
+- 默认分支由 `master` 更名为 `main`，添加远程仓库并推送（含历史标签）
+- README 中的仓库地址占位符替换为真实地址
+- 版本口径未变：**仍为工程发布 v1.0.0 + 本次未发布的整理改动**，不新增发布标签
 
 ### 变更
 - **目录规范化**：核心代码 `蜀汉突围.py` / `config_loader.py` / `save_manager.py` → `src/`；

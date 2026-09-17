@@ -8,9 +8,10 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 ![Tests](https://img.shields.io/badge/tests-74%20passed-brightgreen)
 ![Rules](https://img.shields.io/badge/rules-v0.3.0-blueviolet)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ```bash
-git clone <你的仓库地址>
+git clone https://github.com/luguanzhong/Three-Kingdoms-Game-Prototype-ai-text.git
 cd 三国test
 python main.py                # 开始玩（零依赖，无需 pip install）
 python run_tests.py --fast    # 跑测试，约 11 秒
@@ -99,7 +100,7 @@ python -m pip install -r requirements.txt   # 可安全执行，不会安装任�
 
 ```bash
 # 1. 拿到仓库
-git clone <你的仓库地址>
+git clone https://github.com/luguanzhong/Three-Kingdoms-Game-Prototype-ai-text.git
 cd 三国test
 
 # 2. 确认环境（只需 Python）
@@ -558,7 +559,7 @@ AI 改代码很快，但快就容易碰坏别处。这个项目里有两个真�
 - **单机本地运行**，无联网、无排行榜、无多人。
 - **仅中文一种语言**，无音效与美术资源。
 - **没有 CI 配置**（一键入口 `run_tests.py` 与退出码已就绪，可直接接 GitHub Actions）。
-- **没有 LICENSE 文件**（如需授权请自行补充）。
+- 本项目采用 **MIT 协议**（见 [`LICENSE`](LICENSE)），可自由学习、修改与再分发。
 - `docs/待实现构想.txt` 中的内容均为**未实现设想**，不代表现有功能。
 
 ---
@@ -595,9 +596,10 @@ AI 改代码很快，但快就容易碰坏别处。这个项目里有两个真�
 | [`docs/开发AGENT_LOG.md`](docs/开发AGENT_LOG.md) | AI 协作开发日志（逐次记录改动、数值调整、测试数据、待解决问题） |
 | [`docs/游玩实录.txt`](docs/游玩实录.txt) | 一次完整对局的控制台输出实录（76 KB 真实对局留档） |
 | [`docs/待实现构想.txt`](docs/待实现构想.txt) | 构想池：已确认未实现项与待讨论方向（**不影响当前版本功能**） |
+| [`LICENSE`](LICENSE) | MIT 协议 |
 
 ---
 
 <p align="center">
-  <sub>《三国·蜀汉突围》· 规则 v0.3.0 · 工程发布 v1.0.0 · 纯 Python 标准库 · 零随机</sub>
+  <sub>《三国·蜀汉突围》· 规则 v0.3.0 · 工程发布 v1.0.0 · 纯 Python 标准库 · 零随机 · MIT License</sub>
 </p>
