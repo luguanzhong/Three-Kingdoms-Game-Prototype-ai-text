@@ -5,6 +5,7 @@
   【数据】不需要图形环境：地图数据文件的合法性、十个城池的齐备性、异常数据的处理；
   【渲染】需要图形环境（无显示时自动跳过）：投影与缩放、点击命中、标签不重叠、归属配色、围攻高亮。
 """
+import importlib.util
 import json
 import os
 import sys
@@ -233,6 +234,73 @@ class 地图渲染(unittest.TestCase):
                if 画布.type(项) == "text"]
         self.assertTrue(any("地图数据不可用" in 项 for 项 in 文本s))
         画布.destroy()
+
+
+class 古今地名对照(unittest.TestCase):
+    """考据数据（config/古今地名对照.json）：州郡 ↔ 现代地名，边界考证的依据来源。"""
+
+    @classmethod
+    def setUpClass(cls):
+        规格 = importlib.util.spec_from_file_location(
+            "古今地名对照工具", os.path.join(夹具.仓库根目录, "tools", "古今地名对照.py"))
+        cls.工具 = importlib.util.module_from_spec(规格)
+        规格.loader.exec_module(cls.工具)
+
+    def test_数据校验通过(self):
+        数据, 错误 = self.工具.载入()
+        self.assertEqual(错误, [], "数据文件应能载入")
+        错误, _提示 = self.工具.校验(数据)
+        self.assertEqual(错误, [], "考据数据校验未通过：\n" + "\n".join(错误))
+
+    def test_每条都有依据与交界带今地(self):
+        """没有依据、或没写交界带今地的条目，不允许存在（否则边界就没有参照物）。"""
+        数据, _ = self.工具.载入()
+        for 条 in 数据["条目"]:
+            self.assertTrue(条["依据"], f"{条['郡']} 没有依据")
+            self.assertTrue(条["交界带今地"].strip(), f"{条['郡']} 没有交界带今地")
+            self.assertIn(条["置信度"], self.工具.合法置信度)
+
+    def test_存疑条目标注明确(self):
+        """史料有争议的条目必须显式标为存疑，并写明待核事项 —— 防止被当成定论用。"""
+        数据, _ = self.工具.载入()
+        存疑 = [条 for 条 in 数据["条目"] if 条["置信度"] == "存疑"]
+        for 条 in 存疑:
+            self.assertTrue(条["待核"], f"{条['郡']} 标为存疑却没写待核事项")
+
+    def test_覆盖战场相关区域(self):
+        """首批至少覆盖战场（荆州）与益州核心，否则对本游戏没有实际用处。"""
+        数据, _ = self.工具.载入()
+        州们 = {条["州"] for 条 in 数据["条目"]}
+        for 必需 in ("荆州", "益州"):
+            self.assertIn(必需, 州们, f"首批考据应覆盖{必需}")
+        郡们 = {条["郡"] for 条 in 数据["条目"]}
+        for 必需 in ("南郡", "襄阳郡", "汉中郡", "巴西郡", "巴东郡"):
+            self.assertIn(必需, 郡们, f"首批考据应包含{必需}（游戏内城池所在郡）")
+
+    def test_生成的文档与数据同步(self):
+        """防陈旧：改了 JSON 却没重新生成文档时，必须报错。"""
+        数据, _ = self.工具.载入()
+        文档 = os.path.join(夹具.仓库根目录, "docs", "古今地名对照.md")
+        self.assertTrue(os.path.isfile(文档), "docs/古今地名对照.md 应已生成")
+        with open(文档, encoding="utf-8") as 文件:
+            正文 = 文件.read()
+        self.assertIn(f"当前进度：{len(数据['条目'])} 郡", 正文,
+                      "文档里的郡数与数据不一致 —— 请跑 python tools/古今地名对照.py 生成文档")
+
+    def test_邻郡关系双向自洽性可被检查(self):
+        """单边记载只作提示、不判错（史料本身常不对称），但要确保检查逻辑真的能发现它。"""
+        假数据 = {"条目": [
+            {"郡": "甲郡", "州": "荆州", "治所": "甲", "治所今地": "甲地",
+             "今范围概述": "甲", "交界邻郡": ["乙郡"], "交界带今地": "甲乙之间",
+             "置信度": "高", "依据": ["测试用"], "待核": []},
+            {"郡": "乙郡", "州": "荆州", "治所": "乙", "治所今地": "乙地",
+             "今范围概述": "乙", "交界邻郡": ["丙郡"], "交界带今地": "乙丙之间",
+             "置信度": "中", "依据": ["测试用"], "待核": []},
+        ]}
+        错误, 提示 = self.工具.校验(假数据)
+        self.assertEqual(错误, [], "假数据本身应合法")
+        self.assertTrue(any("甲郡" in 项 and "乙郡" in 项 for 项 in 提示),
+                        f"应提示甲/乙之间的单边记载，实际提示：{提示}")
 
 
 if __name__ == "__main__":

@@ -16,13 +16,13 @@ import unittest
 区域用例 = {
     "引擎": ("test_rules", "test_boundaries", "test_endings", "test_architecture", "test_legacy_suite"),
     "数值": ("test_boundaries",),
-    "地理": ("test_map",),
+    "地理": ("test_map", "test_tracing"),
     "美术": ("test_assets",),
     "界面": ("test_gui_facade", "test_map", "test_assets"),
     "文案": (),          # 尚未抽离，暂无专属用例
     "测试": ("test_architecture",),
     "文档": (),
-    "构建": (),
+    "构建": ("test_tracing",),
     "归档": ("test_architecture",),
     "运行": ("test_gui_facade",),
 }
