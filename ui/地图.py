@@ -113,6 +113,57 @@ def 载入地图数据(路径=None):
     return 数据, 错误
 
 
+def 载入郡界骨架(路径=None):
+    """读取 config/郡界骨架.json（可选数据）。返回 (数据, 错误列表)。
+
+    这是**几何骨架**（由郡治与属县点位算出的泰森多边形），不是考据边界；
+    界面上必须始终带着"骨架"字样展示，避免被误当成历史定论。
+    数据缺失只让这一层不显示，不影响游戏其余部分。
+    """
+    路径 = 路径 or os.path.join(os.path.dirname(地图数据路径()), "郡界骨架.json")
+    if not os.path.isfile(路径):
+        return None, [f"未找到郡界骨架数据：{路径}"
+                   f"（可跑 python tools/郡界骨架生成.py --导出数据 生成）"]
+    错误 = []
+    try:
+        with open(路径, encoding="utf-8") as 文件:
+            数据 = json.load(文件)
+    except (OSError, json.JSONDecodeError) as 异常:
+        return None, [f"郡界骨架数据无法解析：{异常}"]
+    郡们 = 数据.get("郡")
+    if not isinstance(郡们, list) or not 郡们:
+        错误.append("郡界骨架数据缺少「郡」列表")
+        return 数据, 错误
+    for 条 in 郡们:
+        格们 = 条.get("格") or []
+        if not 格们:
+            错误.append(f"「{条.get('郡')}」没有格子数据")
+        for 格 in 格们:
+            if len(格) < 3:
+                错误.append(f"「{条.get('郡')}」有少于 3 点的退化格子")
+            for 点 in 格:
+                if len(点) != 2 or not (-180 <= 点[0] <= 180 and -90 <= 点[1] <= 90):
+                    错误.append(f"「{条.get('郡')}」格子中有非法坐标 {点}")
+    if not 数据.get("警告"):
+        错误.append("骨架数据缺少「警告」字段（必须显式声明它不是考据边界）")
+    return 数据, 错误
+
+
+def 点在多边形内(点, 多边形):
+    """射线法：判断 (经度, 纬度) 是否落在多边形内。多边形为 [[经,纬], ...]。"""
+    x, y = 点
+    内 = False
+    个数 = len(多边形)
+    for i in range(个数):
+        x1, y1 = 多边形[i][0], 多边形[i][1]
+        x2, y2 = 多边形[(i + 1) % 个数][0], 多边形[(i + 1) % 个数][1]
+        if (y1 > y) != (y2 > y):
+            交点x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if x < 交点x:
+                内 = not 内
+    return 内
+
+
 # ══════════════════════════════════════════════════════════════════
 #  画布控件
 # ══════════════════════════════════════════════════════════════════
@@ -122,11 +173,13 @@ class 地图画布(tk.Canvas):
     最小缩放, 最大缩放 = 0.25, 24.0
     点击命中半径 = 资产.地图参数("点击命中半径", 14)
     标签缩放门槛 = 资产.地图参数("标签缩放门槛", 4.0)          # 低于此缩放只画城池点位与名称提示，不画数据标签
+    骨架明细门槛 = 2                                            # 点位数 ≥ 此值才算"有属县依据"的郡
 
-    def __init__(self, 父窗口, 数据, 城池回调=None, **关键字):
+    def __init__(self, 父窗口, 数据, 城池回调=None, 骨架数据=None, **关键字):
         super().__init__(父窗口, background=配色["海"], highlightthickness=0,
                        cursor="fleur", **关键字)
         self.数据 = 数据
+        self.骨架 = 骨架数据
         self.城池回调 = 城池回调
         self.缩放 = 1.0
         self.偏移x = 0.0
@@ -134,6 +187,9 @@ class 地图画布(tk.Canvas):
         self.首次适应 = False
         self.选中城池 = None
         self.悬停城池 = None
+        self.悬停郡 = None
+        self.显示骨架 = True          # 郡界骨架（有属县依据的 6 郡）
+        self.显示粗骨架 = False       # 仅有治所单点的郡（更不可信，默认不显示）
         self.局面 = {}
         self.标签矩形 = {}          # 城名 -> (x1, y1, x2, y2) 屏幕坐标，用于防重叠
         self._拖动起点 = None
@@ -145,6 +201,52 @@ class 地图画布(tk.Canvas):
         self.bind("<ButtonPress-1>", self._按下)
         self.bind("<B1-Motion>", self._拖动)
         self.bind("<ButtonRelease-1>", self._松开)
+        self.bind("<Motion>", self._鼠标移动)
+
+    # ── 郡界骨架：开关与查询 ──
+    def 设骨架(self, 骨架数据):
+        self.骨架 = 骨架数据
+        self.重绘()
+
+    def 设显示骨架(self, 显示):
+        self.显示骨架 = bool(显示)
+        self.重绘()
+
+    def 设显示粗骨架(self, 显示):
+        self.显示粗骨架 = bool(显示)
+        self.重绘()
+
+    def 骨架郡们(self, 含粗=False):
+        """返回要绘制的郡条目列表。含粗=False 时只含"有属县依据"（点位数 ≥ 门槛）的郡。"""
+        if not self.骨架:
+            return []
+        return [条 for 条 in self.骨架.get("郡", [])
+               if 含粗 or len(条.get("县") or []) >= self.骨架明细门槛]
+
+    def 命中郡(self, 屏幕x, 屏幕y):
+        """返回屏幕点落在哪个郡的骨架格里（未命中返回 None）。"""
+        经纬 = self.屏幕到经纬(屏幕x, 屏幕y)
+        if 经纬 is None:
+            return None
+        for 条 in self.骨架郡们(self.显示粗骨架):
+            for 格 in 条.get("格") or []:
+                if 点在多边形内(经纬, 格):
+                    return 条
+        return None
+
+    def 屏幕到经纬(self, 屏幕x, 屏幕y):
+        """屏幕坐标 → 经纬度（与 屏幕到世界 配套，供命中郡使用）。"""
+        世界x, 世界y = self.屏幕到世界(屏幕x, 屏幕y)
+        return (世界x / 经度系数 + 经度基准, 纬度基准 - 世界y / 纬度系数)
+
+    def _鼠标移动(self, 事件):
+        """悬停：城池优先，其次郡界骨架；只重画提示层，避免整图重绘导致卡顿。"""
+        新郡 = None
+        if self.骨架 is not None and (self.显示骨架 or self.显示粗骨架):
+            新郡 = self.命中郡(事件.x, 事件.y)
+        if (新郡 or {}).get("郡") != (self.悬停郡 or {}).get("郡"):
+            self.悬停郡 = 新郡
+            self._画郡提示()
 
     # ── 坐标变换 ──
     def 世界到屏幕(self, 世界x, 世界y):
@@ -277,8 +379,60 @@ class 地图画布(tk.Canvas):
         self._画底图()
         self._画州域()
         self._画州名()
+        self._画郡界()
         self._画城池()
         self._画图例()
+        self._画郡提示()
+
+    def _画郡界(self):
+        """画郡界骨架：只画"有属县依据"的郡；仅有治所单点的郡默认不画（更不可信）。
+
+        骨架的格子只做**淡填充 + 虚线边**，与"州界底"和"城池"区分开，
+        并且图例里明确写着"骨架"二字 —— 不允许被误当成考据边界。
+        """
+        if not self.骨架 or not (self.显示骨架 or self.显示粗骨架):
+            return
+        州色表 = {州["名"]: 州.get("色") or 资产.地图颜色("默认州色")
+                for 州 in self.数据.get("州", [])}
+        for 条 in self.骨架郡们(self.显示粗骨架):
+            有依据 = len(条.get("县") or []) >= self.骨架明细门槛
+            色 = 州色表.get(条.get("州"), 资产.地图颜色("默认州色"))
+            填充 = 混合(配色["陆"], 色, 0.22 if 有依据 else 0.10)
+            边色 = 混合(配色["陆"], 色, 0.75) if 有依据 else 资产.地图颜色("界线")
+            for 格 in 条.get("格") or []:
+                if len(格) < 3:
+                    continue
+                self.create_polygon(self._点列表到屏幕(格), fill=填充,
+                                    outline=边色,
+                                    width=1.4 if 有依据 else 0.8,
+                                    dash=() if 有依据 else (4, 4),
+                                    tags=("地图", "郡界"))
+
+    def _画郡提示(self):
+        """鼠标悬停在某郡上时，在画布一角显示该郡的详情（含"骨架"警示）。"""
+        self.delete("郡提示")
+        if not self.悬停郡:
+            return
+        条 = self.悬停郡
+        县们 = 条.get("县") or []
+        治所县 = next((县 for 县 in 县们 if 县.get("是治所")), None)
+        行们 = [
+            f'{条.get("郡", "")}（{条.get("州", "")}）',
+            f'治所 {条.get("治所", "—")} → {条.get("治所今地", "—")}',
+            f'本图点位 {len(县们)} 个（治所＋属县）',
+            f'交界带：{条.get("交界带今地", "—")}',
+            f'⚠ 骨架：几何推断，非考据边界（整体置信度 {条.get("整体置信度", "?")}）',
+        ]
+        if 条.get("待核"):
+            行们.append("待核：" + "；".join(条["待核"][:2]))
+        宽 = 460
+        高 = 18 * len(行们) + 16
+        x1, y1 = 12, 12
+        self.create_rectangle(x1, y1, x1 + 宽, y1 + 高, fill=配色["标签底"],
+                             outline=配色["围攻"], width=1.4, tags="郡提示")
+        self.create_text(x1 + 10, y1 + 8, anchor="nw", justify="left",
+                        text="\n".join(行们), fill=配色["标签字"],
+                        font=资产.字体("正文", 9), tags="郡提示")
 
     def _画底图(self):
         轮廓 = self.数据["底图"].get("中国轮廓") or []
@@ -433,8 +587,9 @@ class 地图画布(tk.Canvas):
         条目 = [("●", 配色["蜀"], "蜀汉城池"), ("●", 配色["魏"], "曹魏城池"),
               ("◎", 配色["围攻"], "围攻中")]
         行高, 顶距 = 18, 9
-        宽 = 300
-        高 = 行高 * 2 + 顶距 * 2 - 4
+        有骨架说明 = bool(self.骨架 and (self.显示骨架 or self.显示粗骨架))
+        宽 = 620 if 有骨架说明 else 300
+        高 = 行高 * 2 + 顶距 * 2 - 4 + (16 if 有骨架说明 else 0)
         x1, y1 = 10, self.winfo_height() - 高 - 10
         self.create_rectangle(x1, y1, x1 + 宽, y1 + 高, fill=配色["标签底"],
                              outline=配色["标签边"], width=1, tags="图例")
@@ -453,6 +608,17 @@ class 地图画布(tk.Canvas):
         self.create_text(x1 + 宽 - 10, y1 + 顶距 + 3, text=f"缩放 {self.缩放:.2f}×",
                         anchor="e", fill=配色["标签次"],
                         font=资产.字体("正文", 8), tags="图例")
+        # 郡界骨架的说明（只在显示骨架时出现；必须带"骨架"二字，避免被当成考据边界）
+        if 有骨架说明:
+            有依据 = len(self.骨架郡们(False))
+            粗 = len(self.骨架郡们(True)) - 有依据
+            说明 = f"郡界为几何骨架（泰森多边形推断）：{有依据} 郡有属县依据"
+            if 粗 and self.显示粗骨架:
+                说明 += f" + {粗} 郡仅治所（虚线·更不可信）"
+            说明 += "　—— 非考据边界，悬停可看该郡古今对照"
+            self.create_text(x1 + 10, y1 + 顶距 + 行高 * 2 + 2, text=说明,
+                            anchor="nw", fill=配色["围攻"],
+                            font=资产.字体("正文", 8), tags="图例")
 
     # ── 供测试与外部查询 ──
     def 城池屏幕位置(self, 城名):

@@ -144,6 +144,7 @@ class 主窗口(tk.Tk):
         self.会话 = 游戏接口.会话()
         self.自动演示中 = False
         self.地图数据, self.地图错误 = 地图.载入地图数据()
+        self.骨架数据, self.骨架错误 = 地图.载入郡界骨架()
         self.图谱 = None
         self._建样式()
         self._建菜单()
@@ -240,6 +241,13 @@ class 主窗口(tk.Tk):
                         ("适应全图", lambda: self._地图动作("适应全图")),
                         ("居中战场", lambda: self._地图动作("居中战场"))):
             ttk.Button(工具, text=文字, width=9, command=命令).pack(side="right", padx=2)
+        # 郡界骨架开关（骨架是几何推断，必须能一眼关掉、也要能一眼看出它是骨架）
+        self.骨架开关 = tk.BooleanVar(value=True)
+        self.粗骨架开关 = tk.BooleanVar(value=False)
+        ttk.Checkbutton(工具, text="郡界骨架", variable=self.骨架开关,
+                       command=self._切换骨架).pack(side="right", padx=(8, 0))
+        ttk.Checkbutton(工具, text="含仅治所（虚线·更不可信）", variable=self.粗骨架开关,
+                       command=self._切换骨架).pack(side="right", padx=(8, 0))
         self.地图提示 = ttk.Label(工具, text="", style="次.TLabel")
         self.地图提示.pack(side="left", padx=(10, 0))
 
@@ -250,10 +258,14 @@ class 主窗口(tk.Tk):
                      + "\n\n（游戏其余功能不受影响；config/map.json 修复后重启即可）",
                      style="次.TLabel", justify="left").pack(anchor="w")
         else:
-            self.图谱 = 地图.地图画布(中, self.地图数据, 城池回调=self.城池被点击)
+            self.图谱 = 地图.地图画布(中, self.地图数据, 城池回调=self.城池被点击,
+                                骨架数据=self.骨架数据)
             self.图谱.grid(row=1, column=0, sticky="nsew")
-            if self.地图错误:
-                self.地图提示.configure(text="地图数据有警告：" + self.地图错误[0])
+            有依据 = len(self.图谱.骨架郡们(False)) if self.骨架数据 else 0
+            提示 = f"郡界骨架：{有依据} 郡（有属县依据）· 悬停可看古今对照"
+            if self.骨架数据 is None:
+                提示 = "（郡界骨架未载入；" + (self.骨架错误[0] if self.骨架错误 else "") + "）"
+            self.地图提示.configure(text=提示)
 
         self.书 = ttk.Notebook(中, height=176)
         self.书.grid(row=2, column=0, sticky="ew", pady=(6, 0))
@@ -567,6 +579,15 @@ class 主窗口(tk.Tk):
             return
         {"适应全图": self.图谱.适应全图, "居中战场": self.图谱.居中战场}[名称]()
 
+    def _切换骨架(self):
+        if self.图谱 is None:
+            return
+        self.图谱.设显示骨架(self.骨架开关.get())
+        self.图谱.设显示粗骨架(self.粗骨架开关.get())
+        self._设状态(f"郡界骨架：{'显示' if self.骨架开关.get() else '隐藏'}"
+                  f"（{'含' if self.粗骨架开关.get() else '不含'}仅有治所的粗骨架）"
+                  f"；骨架为几何推断，非考据边界")
+
     def 城池被点击(self, 城名):
         """在地图上点了某座城：弹出详情，并可直接发起与该城相关的行动。
 
@@ -828,6 +849,29 @@ def 自检():
         记(f"资产台账校验通过（共 {资产.资产统计()['总数']} 条资产）", not 台账错误)
         if 台账错误:
             结果行.append("      · " + "；".join(台账错误[:3]))
+
+        # —— 郡界骨架：数据 / 渲染 / 悬停命中 ——
+        if 窗口.骨架数据 is None:
+            记("郡界骨架未载入：" + "；".join(窗口.骨架错误[:1]), False)
+        else:
+            有依据 = 窗口.图谱.骨架郡们(False)
+            粗的 = [条 for 条 in 窗口.图谱.骨架郡们(True) if 条 not in 有依据]
+            记(f"郡界骨架已载入：{窗口.骨架数据['郡数']} 郡，其中 {len(有依据)} 郡有属县依据"
+              f"、{len(粗的)} 郡仅有治所", len(有依据) >= 6)
+            记("骨架数据自带「非考据边界」警告字段", bool(窗口.骨架数据.get("警告")))
+            抽检 = [条 for 条 in 有依据 if 条["郡"] in ("南郡", "南阳郡", "汉中郡")]
+            命中合格 = True
+            for 条 in 抽检:
+                治所 = next((县 for 县 in 条["县"] if 县.get("是治所")), 条["县"][0])
+                x, y = 窗口.图谱.世界到屏幕(*地图.投影(*治所["坐标"]))
+                命中 = 窗口.图谱.命中郡(x, y)
+                if 命中 is None or 命中["郡"] != 条["郡"]:
+                    命中合格 = False
+                    结果行.append(f"      · {条['郡']}治所处命中到 "
+                              f"{'空' if 命中 is None else 命中['郡']}，应为 {条['郡']}")
+            记(f"悬停命中抽检（{len(抽检)} 郡治所处应命中自身）", 命中合格)
+            越界 = 窗口.图谱.命中郡(5, 5)
+            记("画布角落处不命中任何郡", 越界 is None)
 
         # —— 地图：数据 / 渲染 / 命中 ——
         记(f"地图数据已载入：{len(窗口.地图数据['州'])} 州 · "

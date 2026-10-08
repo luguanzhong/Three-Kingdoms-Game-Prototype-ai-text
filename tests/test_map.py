@@ -303,5 +303,229 @@ class 古今地名对照(unittest.TestCase):
                         f"应提示甲/乙之间的单边记载，实际提示：{提示}")
 
 
+class 郡属县数据(unittest.TestCase):
+    """考据数据（config/郡属县.json）：郡 → 属县 → 现代参照点。边界从几何骨架升级为有依据的边界，靠的就是它。"""
+
+    @classmethod
+    def setUpClass(cls):
+        路径 = os.path.join(夹具.仓库根目录, "config", "郡属县.json")
+        with open(路径, encoding="utf-8") as 文件:
+            cls.数据 = json.load(文件)
+        cls.属县 = cls.数据["郡属县"]
+
+    def test_六郡齐备(self):
+        for 郡 in ("南郡", "襄阳郡", "南阳郡", "汉中郡", "巴西郡", "巴东郡"):
+            self.assertIn(郡, self.属县, f"首批应包含{郡}")
+
+    def test_每条字段齐备且置信度合法(self):
+        for 郡, 县们 in self.属县.items():
+            self.assertIsInstance(县们, list, f"{郡} 的值应是列表")
+            self.assertTrue(县们, f"{郡} 不应为空")
+            for 县 in 县们:
+                for 字段 in ("县", "今地", "坐标", "置信度", "备注"):
+                    self.assertIn(字段, 县, f"{郡}·{县.get('县')} 缺少字段 {字段}")
+                self.assertIn(县["置信度"], ("高", "中", "存疑"))
+                self.assertEqual(len(县["坐标"]), 2, f"{郡}·{县['县']} 坐标应为 [经度, 纬度]")
+
+    def test_属县不得跨郡重复(self):
+        """同一个县只能属于一个郡 —— 否则同一个坐标会在两郡各生成一个退化格子。"""
+        见过 = {}
+        重复 = []
+        for 郡, 县们 in self.属县.items():
+            for 县 in 县们:
+                if 县["县"] in 见过:
+                    重复.append(f"{县['县']}（{见过[县['县']]} 与 {郡}）")
+                见过[县["县"]] = 郡
+        self.assertEqual(重复, [], "属县跨郡重复：\n" + "\n".join(重复))
+
+    def test_坐标不重复且落在中国范围内(self):
+        坐标集 = {}
+        越界 = []
+        for 郡, 县们 in self.属县.items():
+            for 县 in 县们:
+                经度, 纬度 = 县["坐标"]
+                if not (73 <= 经度 <= 136 and 18 <= 纬度 <= 54):
+                    越界.append(f"{郡}·{县['县']} {县['坐标']}")
+                键 = (round(经度, 4), round(纬度, 4))
+                坐标集.setdefault(键, []).append(f"{郡}·{县['县']}")
+        self.assertEqual(越界, [], "坐标越界：\n" + "\n".join(越界))
+        重合 = [v for v in 坐标集.values() if len(v) > 1]
+        self.assertEqual(重合, [], f"坐标完全相同的点：{重合}")
+
+    def test_存疑条目必须写清理由(self):
+        for 郡, 县们 in self.属县.items():
+            for 县 in 县们:
+                if 县["置信度"] == "存疑":
+                    self.assertTrue(县["备注"].strip(),
+                                    f"{郡}·{县['县']} 标为存疑却未写备注说明原因")
+
+    def test_南郡与襄阳郡的划出关系有记录(self):
+        """208 年分置襄阳郡时从南郡划走六县 —— 这个考据细节必须记在数据里，不能被悄悄丢掉。"""
+        self.assertIn("南郡", self.数据.get("郡说明", {}), "应在顶层「郡说明」记录南郡与襄阳郡的划出关系")
+        说明 = self.数据["郡说明"]["南郡"]
+        for 县名 in ("襄阳", "宜城", "中卢", "临沮", "邔", "鄀"):
+            self.assertIn(县名, 说明, f"南郡说明里应提到划出的{县名}")
+        南郡名 = {县["县"] for 县 in self.属县["南郡"]}
+        襄阳名 = {县["县"] for 县 in self.属县["襄阳郡"]}
+        self.assertFalse(南郡名 & 襄阳名, "南郡与襄阳郡不应有同名属县")
+
+
+class 郡界骨架数据(unittest.TestCase):
+    """郡界骨架数据侧（无需图形环境）：结构、警告字段、点在多边形内。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.骨架, cls.错误 = 地图.载入郡界骨架()
+
+    def test_骨架数据可载入且无校验错误(self):
+        self.assertIsNotNone(self.骨架, f"骨架数据应可载入：{self.错误}")
+        self.assertEqual(self.错误, [], "骨架数据校验未通过：\n" + "\n".join(self.错误))
+
+    def test_必须自带非考据边界警告(self):
+        """这是安全阀：骨架若被当成考据边界用，整个地图的可信度就崩了。"""
+        self.assertTrue(self.骨架.get("警告"), "骨架数据必须显式声明它不是考据边界")
+        警告 = self.骨架["警告"]
+        self.assertIn("不是考据边界", 警告)
+        self.assertIn("泰森多边形", 警告)
+
+    def test_六郡有属县依据(self):
+        有依据 = [条["郡"] for 条 in self.骨架["郡"] if len(条.get("县") or []) >= 2]
+        for 郡 in ("南郡", "襄阳郡", "南阳郡", "汉中郡", "巴西郡", "巴东郡"):
+            self.assertIn(郡, 有依据, f"{郡} 应有属县依据（点位数 ≥ 2）")
+
+    def test_每郡字段齐备且引用古今对照(self):
+        for 条 in self.骨架["郡"]:
+            for 字段 in ("郡", "州", "格", "县", "治所", "治所今地", "整体置信度"):
+                self.assertIn(字段, 条, f"骨架条目缺少字段 {字段}")
+            self.assertTrue(条["格"], f"{条['郡']} 没有格子")
+            self.assertTrue(条["治所今地"], f"{条['郡']} 没有治所今地名")
+
+    def test_骨架引用的一致性(self):
+        """骨架里的县与治所必须与 config/郡属县.json、config/古今地名对照.json 对得上。"""
+        对照 = json.loads(夹具.读取源码("config/古今地名对照.json")) if False else None
+        with open(os.path.join(夹具.仓库根目录, "config", "古今地名对照.json"),
+                  encoding="utf-8") as 文件:
+            对照 = json.load(文件)
+        索引 = {条["郡"]: 条 for 条 in 对照["条目"]}
+        for 条 in self.骨架["郡"]:
+            self.assertIn(条["郡"], 索引, f"{条['郡']} 不在古今地名对照里")
+            self.assertEqual(条["治所今地"], 索引[条["郡"]]["治所今地"],
+                             f"{条['郡']} 的治所今地与对照表不一致（数据不同步？）")
+
+    def test_点在多边形内_凸多边形(self):
+        方 = [[0, 0], [10, 0], [10, 10], [0, 10]]
+        self.assertTrue(地图.点在多边形内((5, 5), 方))
+        self.assertFalse(地图.点在多边形内((15, 5), 方))
+        self.assertFalse(地图.点在多边形内((5, -1), 方))
+
+    def test_点在多边形内_凹多边形(self):
+        """L 形：凹口里的点必须判为"不在内"（射线法最容易在这里写错）。"""
+        凹 = [[0, 0], [10, 0], [10, 4], [4, 4], [4, 10], [0, 10]]
+        self.assertTrue(地图.点在多边形内((2, 2), 凹))
+        self.assertFalse(地图.点在多边形内((7, 7), 凹), "凹口内的点不应判为在内")
+
+    def test_骨架数据缺失时只报错不崩(self):
+        数据, 错误 = 地图.载入郡界骨架(os.path.join(tempfile.gettempdir(), "没有这个.json"))
+        self.assertIsNone(数据)
+        self.assertTrue(错误)
+        self.assertIn("未找到", 错误[0])
+
+
+class 郡界骨架渲染(unittest.TestCase):
+    """郡界骨架在画布上的行为（需图形环境）：绘制、开关、悬停命中、提示框不越界。"""
+
+    def setUp(self):
+        try:
+            import tkinter
+            探针 = tkinter.Tk()
+            探针.destroy()
+        except Exception as 异常:
+            self.skipTest(f"当前环境无图形界面：{异常!r}")
+        import tkinter
+        import 游戏接口
+        self.根 = tkinter.Tk()
+        self.根.geometry("1200x760")
+        self.地图数据, _ = 地图.载入地图数据()
+        self.骨架, _ = 地图.载入郡界骨架()
+        self.局 = 游戏接口.会话()
+        self.局.新开局(输出回调=lambda 文本: None, 询问回调=lambda 提示: "0")
+        self.画布 = 地图.地图画布(self.根, self.地图数据, 骨架数据=self.骨架)
+        self.画布.pack(fill="both", expand=True)
+        self.根.update()
+        self.画布.重绘(self.局.局面())
+        self.根.update()
+
+    def tearDown(self):
+        if getattr(self, "根", None) is not None:
+            self.根.destroy()
+
+    def _与骨架有关的项(self, 标签):
+        return [项 for 项 in self.画布.find_withtag(标签)]
+
+    def test_默认绘制有依据的郡且可整体关闭(self):
+        self.画布.设显示骨架(True)
+        self.根.update()
+        有骨架项 = self._与骨架有关的项("郡界")
+        self.assertTrue(有骨架项, "默认应绘制郡界骨架")
+        self.画布.设显示骨架(False)
+        self.根.update()
+        self.assertEqual(self._与骨架有关的项("郡界"), [], "关闭后不应再有郡界项")
+        self.画布.设显示骨架(True)
+
+    def test_默认不画仅有治所的粗骨架(self):
+        self.画布.设显示粗骨架(False)
+        self.根.update()
+        细 = len(self._与骨架有关的项("郡界"))
+        self.画布.设显示粗骨架(True)
+        self.根.update()
+        全部 = len(self._与骨架有关的项("郡界"))
+        self.assertGreater(全部, 细, "打开粗骨架后应有更多格子被绘制")
+
+    def test_悬停命中郡(self):
+        self.画布.居中战场()
+        self.根.update()
+        命中数 = 0
+        for 条 in self.画布.骨架郡们(False):
+            治所 = next((县 for 县 in 条["县"] if 县.get("是治所")), 条["县"][0])
+            x, y = self.画布.世界到屏幕(*地图.投影(*治所["坐标"]))
+            命中 = self.画布.命中郡(x, y)
+            self.assertIsNotNone(命中, f"{条['郡']} 治所处应命中某个郡")
+            self.assertEqual(命中["郡"], 条["郡"], f"{条['郡']} 治所处命中了 {命中['郡']}")
+            命中数 += 1
+        self.assertGreaterEqual(命中数, 6, "至少应有 6 个郡参与命中抽检")
+
+    def test_悬停提示带骨架字样且不越界(self):
+        self.画布.居中战场()
+        self.根.update()
+        条 = self.画布.骨架郡们(False)[0]
+        治所 = next((县 for 县 in 条["县"] if 县.get("是治所")), 条["县"][0])
+        x, y = self.画布.世界到屏幕(*地图.投影(*治所["坐标"]))
+        self.画布.悬停郡 = self.画布.命中郡(x, y)
+        self.画布._画郡提示()
+        self.根.update()
+        提示项 = self._与骨架有关的项("郡提示")
+        self.assertTrue(提示项, "悬停后应画出提示框")
+        文本 = "".join(self.画布.itemcget(项, "text") for 项 in 提示项
+                    if self.画布.type(项) == "text")
+        self.assertIn("骨架", 文本, "提示框必须写明这是骨架")
+        self.assertIn("非考据边界", 文本)
+        self.assertIn(条["郡"], 文本)
+        框 = self.画布.bbox("郡提示")
+        self.assertLessEqual(框[2], self.画布.winfo_width(), "提示框不得超出画布右边界")
+        self.assertLessEqual(框[3], self.画布.winfo_height(), "提示框不得超出画布下边界")
+
+    def test_图例含骨架说明且框不越界(self):
+        self.画布.适应全图()
+        self.根.update()
+        图例文本 = "".join(self.画布.itemcget(项, "text") for 项 in self._与骨架有关的项("图例")
+                     if self.画布.type(项) == "text")
+        self.assertIn("骨架", 图例文本, "图例必须说明郡界是骨架")
+        框 = self.画布.bbox("图例")
+        self.assertLessEqual(框[2], self.画布.winfo_width(), "图例框不得超出画布右边界")
+        self.assertLessEqual(框[3], self.画布.winfo_height(), "图例框不得超出画布下边界")
+        self.assertGreaterEqual(框[0], 0)
+        self.assertGreaterEqual(框[1], 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
