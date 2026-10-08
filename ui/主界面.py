@@ -32,11 +32,13 @@ def _定位目录():
 
 
 仓库根目录, 源码目录 = _定位目录()
-for 目录 in (源码目录, 仓库根目录):
+自己目录 = os.path.dirname(os.path.abspath(__file__))
+for 目录 in (源码目录, 仓库根目录, 自己目录):
     if os.path.isdir(目录) and 目录 not in sys.path:
         sys.path.insert(0, 目录)
 
 import 游戏接口  # noqa: E402  （本地模块）
+import 地图  # noqa: E402  （本地模块：游戏内图形地图）
 
 # 从引擎打印的菜单里认出「可点击选项」：1. xxx ／ A. xxx ／ 1、xxx ／ 1) xxx
 选项模式 = re.compile(r"^\s*([0-9]{1,2}|[A-Za-z])[.、)]\s*(\S.*)$")
@@ -134,10 +136,12 @@ class 主窗口(tk.Tk):
         super().__init__()
         self.title("三国 · 蜀汉突围")
         self.configure(bg=配色["底"])
-        self.geometry("1220x820")
-        self.minsize(1040, 700)
+        self.geometry("1280x900")
+        self.minsize(1080, 740)
         self.会话 = 游戏接口.会话()
         self.自动演示中 = False
+        self.地图数据, self.地图错误 = 地图.载入地图数据()
+        self.图谱 = None
         self._建样式()
         self._建菜单()
         self._建布局()
@@ -219,11 +223,37 @@ class 主窗口(tk.Tk):
         左.grid(row=1, column=0, sticky="nsw")
         self._建局势面板(左)
 
-        # 中：将领 / 城池 / 态势图
+        # 中：图形地图（主区） + 工具栏 + 数据表标签页（下移）
         中 = ttk.Frame(self, padding=(6, 0, 6, 8))
         中.grid(row=1, column=1, sticky="nsew")
-        self.书 = ttk.Notebook(中)
-        self.书.pack(fill="both", expand=True)
+        中.columnconfigure(0, weight=1)
+        中.rowconfigure(1, weight=1)
+
+        工具 = ttk.Frame(中)
+        工具.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+        ttk.Label(工具, text="战区地图", style="标题.TLabel").pack(side="left")
+        for 文字, 命令 in (("放大 ＋", lambda: self._地图缩放(1.3)),
+                        ("缩小 －", lambda: self._地图缩放(1 / 1.3)),
+                        ("适应全图", lambda: self._地图动作("适应全图")),
+                        ("居中战场", lambda: self._地图动作("居中战场"))):
+            ttk.Button(工具, text=文字, width=9, command=命令).pack(side="right", padx=2)
+        self.地图提示 = ttk.Label(工具, text="", style="次.TLabel")
+        self.地图提示.pack(side="left", padx=(10, 0))
+
+        if self.地图数据 is None:
+            框 = ttk.LabelFrame(中, text=" 战区地图 ", padding=10)
+            框.grid(row=1, column=0, sticky="nsew")
+            ttk.Label(框, text="地图不可用：\n" + "\n".join(self.地图错误)
+                     + "\n\n（游戏其余功能不受影响；config/map.json 修复后重启即可）",
+                     style="次.TLabel", justify="left").pack(anchor="w")
+        else:
+            self.图谱 = 地图.地图画布(中, self.地图数据, 城池回调=self.城池被点击)
+            self.图谱.grid(row=1, column=0, sticky="nsew")
+            if self.地图错误:
+                self.地图提示.configure(text="地图数据有警告：" + self.地图错误[0])
+
+        self.书 = ttk.Notebook(中, height=176)
+        self.书.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         self.将领表 = self._建表格(self.书, "将领", ("姓名", "位置", "任务", "子任务", "指令", "状态"),
                               (58, 58, 84, 54, 74, 54))
         self.书.add(self.将领表.master, text="  将领  ")
@@ -236,14 +266,14 @@ class 主窗口(tk.Tk):
         态势框 = ttk.Frame(self.书)
         态势框.rowconfigure(0, weight=1)
         态势框.columnconfigure(0, weight=1)
-        self.态势文本 = tk.Text(态势框, wrap="none", font=("Consolas", 10),
+        self.态势文本 = tk.Text(态势框, wrap="none", font=("Consolas", 9),
                            bg="#1e2430", fg="#d8e0ea", insertbackground="#d8e0ea",
-                           relief="flat", padx=10, pady=8)
+                           relief="flat", padx=10, pady=6, height=9)
         self.态势文本.grid(row=0, column=0, sticky="nsew")
         滚 = ttk.Scrollbar(态势框, orient="vertical", command=self.态势文本.yview)
         滚.grid(row=0, column=1, sticky="ns")
         self.态势文本.configure(yscrollcommand=滚.set, state="disabled")
-        self.书.add(态势框, text="  战区态势图  ")
+        self.书.add(态势框, text="  战区态势图（文字版·调试用）  ")
 
         # 右：行动 + 存档位
         右 = ttk.Frame(self, padding=(6, 0, 12, 8))
@@ -521,6 +551,136 @@ class 主窗口(tk.Tk):
         结束态 = "normal" if (not 局面["结局"] and not self.自动演示中) else "disabled"
         self.结束按钮.configure(state=结束态)
 
+        if self.图谱 is not None:                     # 地图随局面一起刷新
+            self.图谱.重绘(局面)
+
+    # ── 地图 ──
+    def _地图缩放(self, 因子):
+        if self.图谱 is not None:
+            self.图谱.缩放一步(因子)
+
+    def _地图动作(self, 名称):
+        if self.图谱 is None:
+            return
+        {"适应全图": self.图谱.适应全图, "居中战场": self.图谱.居中战场}[名称]()
+
+    def 城池被点击(self, 城名):
+        """在地图上点了某座城：弹出详情，并可直接发起与该城相关的行动。
+
+        行动的"目标序号"由门面向引擎自己的列表函数求得（见 游戏接口.序号_*），
+        界面不复制任何筛选或排序逻辑。
+        """
+        局面 = self.会话.局面()
+        if not 局面:
+            return
+        if self.自动演示中:
+            self._设状态("自动演示进行中；结束演示后再操作地图。")
+            return
+        魏城 = next((项 for 项 in 局面["敌方城池"] if 项["城池"] == 城名), None)
+        蜀城 = next((项 for 项 in 局面["蜀汉城池"] if 项["城池"] == 城名), None)
+        if 魏城 is None and 蜀城 is None:
+            return
+        归属 = 魏城["归属"] if 魏城 is not None else "蜀汉"
+        类型 = next((城.get("类型", "") for 城 in (self.地图数据 or {}).get("城池", [])
+                   if 城["名"] == 城名), "")
+        驻将们 = [将["姓名"] for 将 in 局面["将领们"]
+                if 将["位置"] == 城名 and 将["状态"] != "已殁"]
+
+        对话 = tk.Toplevel(self)
+        对话.title(f"{城名} · {归属}")
+        对话.configure(bg=配色["底"])
+        对话.transient(self)
+        对话.resizable(False, False)
+        外 = ttk.Frame(对话, padding=14)
+        外.pack(fill="both", expand=True)
+        ttk.Label(外, text=f"{城名}（{归属}{'·' + 类型 if 类型 else ''}）",
+                 style="提示.TLabel").pack(anchor="w")
+
+        行们 = [("归属", 归属)]
+        if 魏城 is not None:
+            行们 += [("守军", f"{魏城['守军']:,}"), ("粮草", f"{魏城['粮草']:,}"),
+                   ("守将", 魏城["守将"])]
+        if 蜀城 is not None:
+            行们.append(("兵力", f"{蜀城['兵力']:,}"))
+        行们.append(("驻将", "、".join(驻将们) if 驻将们 else "无"))
+        围攻 = 局面["围攻"]
+        if 围攻 and 围攻.get("目标") == 城名:
+            行们.append(("战况", f"围攻中：还需 {围攻['剩余']} 回合（领将 {围攻['领将']}）"))
+        信息 = ttk.Frame(外)
+        信息.pack(fill="x", pady=(8, 4))
+        for 序号, (键, 值) in enumerate(行们):
+            ttk.Label(信息, text=键, style="次.TLabel").grid(row=序号, column=0, sticky="w", pady=1)
+            ttk.Label(信息, text=str(值), style="数值.TLabel").grid(
+                row=序号, column=1, sticky="w", padx=(12, 0), pady=1)
+
+        铜牌 = ttk.LabelFrame(外, text=" 可执行的操作 ", padding=(10, 6, 10, 8))
+        铜牌.pack(fill="x", pady=(8, 4))
+        阻挡 = ("本局已结束" if 局面["结局"]
+              else ("本回合已用过大事，请先结束本回合" if 局面["大事已用"] else ""))
+
+        if 归属 == "蜀汉":
+            if 驻将们:
+                姓 = 驻将们[0]
+                序 = self.会话.序号_可行动将领(姓)
+                if 序 is not None:
+                    ttk.Button(铜牌, text=f"部署将领任务（{姓}）", width=28,
+                               command=lambda: self._从城池执行(
+                                   对话, "部署任务", [序], f"部署{姓}的任务")).pack(fill="x", pady=2)
+                    ttk.Button(铜牌, text=f"设定守城指令（{姓}）", width=28,
+                               command=lambda: self._从城池执行(
+                                   对话, "守城指令", [序], f"设定{姓}的城破指令")).pack(fill="x", pady=2)
+                else:
+                    ttk.Label(铜牌, text=f"{姓}当前不可行动（重伤 / 被俘 / 已殁）",
+                             style="次.TLabel").pack(anchor="w")
+            else:
+                ttk.Label(铜牌, text="该城暂无驻将：可先用「部署将领任务」派将前来",
+                         style="次.TLabel").pack(anchor="w")
+        else:
+            序军事 = self.会话.序号_军事目标(城名)
+            序劝降 = self.会话.序号_可劝降目标(城名)
+            if 序军事 is not None:
+                钮 = ttk.Button(铜牌, text=f"发起军事行动 · 目标{城名}", width=28,
+                              command=lambda: self._从城池执行(
+                                  对话, "军事行动", [序军事], f"进攻{城名}"))
+                钮.pack(fill="x", pady=2)
+                if 阻挡:
+                    钮.configure(state="disabled")
+            else:
+                原因 = ("北伐之路未通：需先夺取宛城或樊城以打通粮道"
+                      if 城名 == "洛阳" else "当前无法进攻该城")
+                ttk.Label(铜牌, text=f"✕ {原因}", style="次.TLabel",
+                         wraplength=240, justify="left").pack(anchor="w")
+            if 序劝降 is not None:
+                钮 = ttk.Button(铜牌, text=f"计谋 · 劝降{城名}守将", width=28,
+                              command=lambda: self._从城池执行(
+                                  对话, "计谋", ["6", 序劝降], f"劝降{城名}"))
+                钮.pack(fill="x", pady=2)
+                if 阻挡:
+                    钮.configure(state="disabled")
+            if 阻挡:
+                ttk.Label(铜牌, text="（" + 阻挡 + "）", style="次.TLabel",
+                         wraplength=240, justify="left").pack(anchor="w", pady=(4, 0))
+
+        ttk.Button(外, text="关闭", command=对话.destroy).pack(fill="x", pady=(6, 0))
+        对话.bind("<Escape>", lambda 事件: 对话.destroy())
+        self._居中窗口(对话)
+
+    def _从城池执行(self, 对话, 行动键, 预设答案, 说明):
+        """先关掉城池详情窗，再执行行动（避免两个模态窗互相抢占），最后刷新界面。"""
+        对话.destroy()
+        self.update_idletasks()
+        self._设状态(说明 + "……")
+        成功, 提示 = self.会话.执行行动(行动键, 预设答案=预设答案)
+        self.刷新()
+        if 提示:
+            self._设状态(提示)
+
+    def _居中窗口(self, 窗口):
+        窗口.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - 窗口.winfo_width()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - 窗口.winfo_height()) // 3
+        窗口.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
     def _填表(self, 表, 行们):
         表.delete(*表.get_children())
         for 行 in 行们:
@@ -651,6 +811,42 @@ def 自检():
 
         态势 = 局.态势图()
         记(f"战区态势图渲染：{len(态势.splitlines())} 行", bool(态势.strip()))
+
+        # —— 地图：数据 / 渲染 / 命中 ——
+        记(f"地图数据已载入：{len(窗口.地图数据['州'])} 州 · "
+          f"{len(窗口.地图数据['城池'])} 城池",
+           窗口.地图数据 is not None and not 窗口.地图错误)
+        if 窗口.图谱 is not None:
+            窗口.图谱.居中战场()
+            窗口.update()
+            可见 = 窗口.图谱.可视城池()
+            记(f"居中战场后可见城池：{len(可见)} / 10", len(可见) == 10)
+            # 标签只在缩放足够时绘制（缩略视野下避免十个标签挤成一团）：
+            # 这里先把缩放推到门槛之上，再检查标签的数量与不重叠。
+            if 窗口.图谱.缩放 < 地图.地图画布.标签缩放门槛:
+                窗口.图谱.缩放一步(4.8 / 窗口.图谱.缩放)
+                窗口.update()
+            框们 = list(窗口.图谱.标签矩形.values())
+            重叠 = 0
+            for i in range(len(框们)):
+                for j in range(i + 1, len(框们)):
+                    a1, b1, a2, b2 = 框们[i]
+                    c1, d1, c2, d2 = 框们[j]
+                    if not (a2 < c1 or a1 > c2 or b2 < d1 or b1 > d2):
+                        重叠 += 1
+            记(f"缩放 {窗口.图谱.缩放:.1f}× 下城池数据标签：{len(框们)} 个，重叠 {重叠} 处",
+               len(框们) == 10 and 重叠 == 0)
+            位置 = 窗口.图谱.城池屏幕位置("襄阳")
+            记("地图点击命中城池（襄阳）",
+               窗口.图谱.命中城池(*位置) == "襄阳")
+            窗口.图谱.适应全图()
+            窗口.update()
+            宽, 高 = 窗口.图谱.winfo_width(), 窗口.图谱.winfo_height()
+            越界 = [名 for 名 in ("成都", "江陵", "阆中", "汉中", "永安",
+                               "襄阳", "樊城", "宛城", "上庸", "洛阳")
+                  if not (0 <= 窗口.图谱.城池屏幕位置(名)[0] <= 宽
+                          and 0 <= 窗口.图谱.城池屏幕位置(名)[1] <= 高)]
+            记(f"适应全图后十城均在画布内（越界 {len(越界)} 座）", not 越界)
 
         # 真实存档目录可写性探针：确认打包后确实能在 exe 同级目录落盘存档
         # （只写一个探针文件并立即删除，不动玩家任何真实存档）
