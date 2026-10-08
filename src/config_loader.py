@@ -22,12 +22,30 @@
 import json
 import logging
 import os
+import sys
 
 # M5：日志（默认不输出，由入口按 --log-level 配置；日志不替代面向用户的提示文本）
 日志 = logging.getLogger("蜀汉突围.配置")
 
-# 项目根目录：本文件位于 src/ 下，故取上一级；config/ 固定挂在项目根（与启动时的工作目录无关）
-项目根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def 定位项目根目录():
+    """定位项目根目录（`config/` 的父目录）。兼容两种运行形态：
+
+    1. **源码运行**：本文件位于 `<项目根>/src/` 下，取上一级即可；
+    2. **打包运行**（PyInstaller 单文件 exe）：本文件被释放到临时目录 `sys._MEIPASS` 下，
+       `config/` 随包释放到同一层（见 tools/打包exe.py 的 --add-data），此时取该目录。
+
+    说明：只做「哪个目录里真的存在 config/」的判断，不改变任何配置语义。
+    """
+    if getattr(sys, "frozen", False):
+        释放目录 = getattr(sys, "_MEIPASS", "")
+        if 释放目录 and os.path.isdir(os.path.join(释放目录, "config")):
+            return 释放目录
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# 项目根目录：config/ 固定挂在这里（与启动时的工作目录无关）
+项目根目录 = 定位项目根目录()
 
 # —— 配置文件 → 合并后配置顶层键 的映射 ——
 配置文件名映射 = {

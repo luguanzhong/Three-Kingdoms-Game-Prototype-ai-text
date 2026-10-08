@@ -24,9 +24,12 @@ import 夹具
 关键字模式 = re.compile(r"(?<![A-Za-z_])(" + "|".join(sorted(随机关键字, key=len, reverse=True))
                     + r")(?![A-Za-z_])", re.IGNORECASE)
 # 允许的标准库模块（生产代码只应使用这些 + 本地模块）
+# tkinter 与 re：图形界面（ui/主界面.py）使用，二者均属 Python 标准库，
+# 因此"零第三方依赖"的约束在引入 GUI 之后依然成立（界面零安装，不是零依赖的例外）。
 标准库白名单 = {"os", "sys", "time", "json", "io", "contextlib", "shutil",
                 "tempfile", "importlib", "importlib.util", "py_compile",
-                "logging", "argparse"}
+                "logging", "argparse", "re", "tkinter", "tkinter.ttk",
+                "tkinter.messagebox", "traceback"}
 
 
 def 是关键字参数(行, 匹配):

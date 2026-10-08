@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三国州域 · 现代底图对照图</title>
+<style>
+  /* 若日后要换成隶书：把下面 --title-font 换成你的隶书 webfont 即可，
+     例如 @font-face { font-family:"LiShu"; src:url("lishu.woff2"); }
+     正文与小字建议保留衬线/黑体，隶书小字号可读性较差。 */
+  :root {
+    --title-font: "Noto Serif SC", "Source Han Serif SC", "STZhongsong", "SimSun", serif;
+    --body-font:  "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+    --paper: #f7f4ec;
+    --sea:   #eaf1f6;
+    --land:  #f3f0e6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    font-family: var(--body-font);
+    color: #2b2b2b;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 26px 20px 46px; }
+  h1 {
+    font-family: var(--title-font);
+    font-size: 26px; font-weight: 700; letter-spacing: 3px;
+    margin: 0 0 6px; color: #3a2f24;
+  }
+  .sub { margin: 0 0 4px; font-size: 13px; color: #6b6156; letter-spacing: .5px; }
+  .hint { margin: 0 0 10px; font-size: 12.5px; color: #8a7f72; }
+  .stage {
+    background: #fff; border: 1px solid #ddd6c6; border-radius: 12px;
+    box-shadow: 0 2px 14px rgba(90, 78, 60, .07);
+    padding: 8px; overflow: hidden;
+  }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* —— 现代底图 —— */
+  .sea    { fill: var(--sea); }
+  .land   { fill: var(--land); stroke: #9aa4ad; stroke-width: 1.6;
+             stroke-dasharray: 6 4; stroke-linejoin: round; }
+  .island { fill: var(--land); stroke: #9aa4ad; stroke-width: 1.4;
+             stroke-dasharray: 5 3; }
+  .inner  { fill: none; stroke: #b9c1c8; stroke-width: 1.3;
+             stroke-dasharray: 3 4; stroke-linecap: round; }
+
+  /* —— 州域色块 —— */
+  .prov {
+    fill-opacity: .58;
+    stroke: rgba(60, 50, 40, .45);
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+    transition: fill-opacity .16s ease;
+    cursor: help;
+  }
+  .prov:hover { fill-opacity: .88; stroke-width: 1.8; stroke: #3a2f24; }
+
+  /* —— 标注（用白色描边做「光晕」，保证压在任何色块上都读得清）—— */
+  text { font-family: var(--title-font); paint-order: stroke; }
+  .l-name {
+    font-size: 16.5px; font-weight: 700; letter-spacing: 2px;
+    text-anchor: middle; fill: #241d16;
+    stroke: #fffdf7; stroke-width: 3.6; stroke-linejoin: round;
+  }
+  .l-cap {
+    font-size: 10.5px; text-anchor: middle; fill: #33302b;
+    stroke: #fffdf7; stroke-width: 3;
+  }
+  .l-now {
+    font-size: 10px; text-anchor: middle; fill: #5a5348;
+    stroke: #fffdf7; stroke-width: 3;
+  }
+  .label { pointer-events: none; }
+
+  /* —— 图例与注释 —— */
+  .lg-title { font-size: 12.5px; font-weight: 700; fill: #3a2f24; letter-spacing: .5px; }
+  .lg-item  { font-size: 11px; fill: #33302b; }
+  .note { font-family: var(--body-font); font-size: 9.5px; fill: #7b7266; }
+  .west { font-family: var(--title-font); font-size: 17px; letter-spacing: 6px;
+           fill: #8a7f72; text-anchor: middle; }
+  footer { margin-top: 14px; font-size: 12px; color: #8a7f72; line-height: 1.9; }
+  footer code { background: #efe9dc; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>三国州域 · 现代底图对照图</h1>
+  <p class="sub">东汉末至曹魏（约 200–265 年）· 十三州（不含交州）· 采曹魏制：司隶与雍州并存</p>
+  <p class="hint">鼠标悬停任意色块，可查看州名、治所（含汉末移治）与今地对照。</p>
+
+  <div class="stage">
+    <svg viewBox="-30 -30 1250 910" xmlns="http://www.w3.org/2000/svg" role="img"
+         aria-label="三国十三州州域与现代中国底图对照图">
+      <!-- ① 现代底图：海面 + 简化中国轮廓（虚线代表今国界，仅示意） -->
+      <rect class="sea" x="-30" y="-30" width="1250" height="910" rx="8"/>
+      <path class="land" d="M237.5,126.5 L285.0,110.4 L332.5,138.0 L380.0,207.0 L437.0,241.5 L494.0,276.0 L551.0,271.4 L627.0,276.0 L693.5,257.6 L731.5,241.5 L788.5,218.5 L826.5,195.5 L860.7,147.2 L885.4,105.8 L904.4,73.6 L923.4,32.2 L942.4,11.5 L980.4,16.1 L1014.6,55.2 L1033.6,85.1 L1058.3,101.2 L1092.5,117.3 L1128.6,133.4 L1172.3,128.8 L1164.7,156.4 L1140.0,186.3 L1132.4,204.7 L1107.7,209.3 L1105.8,248.4 L1090.6,262.2 L1045.0,276.0 L1016.5,299.0 L978.5,322.0 L940.5,333.5 L921.5,349.6 L874.0,333.5 L845.5,345.0 L855.0,368.0 L874.0,379.5 L912.0,372.6 L944.3,381.8 L921.5,414.0 L883.5,437.0 L893.0,460.0 L912.0,494.5 L929.1,517.5 L921.5,545.1 L931.0,575.0 L912.0,598.0 L889.2,632.5 L864.5,671.6 L826.5,708.4 L775.2,726.8 L722.0,747.5 L703.0,754.4 L699.2,782.0 L674.5,747.5 L640.3,736.0 L608.0,713.0 L579.5,724.5 L547.2,754.4 L513.0,747.5 L494.0,724.5 L465.5,694.6 L475.0,655.5 L465.5,586.5 L446.5,575.0 L408.5,575.0 L361.0,602.6 L304.0,614.1 L247.0,600.3 L209.0,581.9 L152.0,547.4 L114.0,517.5 L104.5,494.5 L110.2,448.5 L57.0,425.5 L28.5,391.0 L19.0,356.5 L9.5,333.5 L38.0,310.5 L66.5,299.0 L110.2,271.4 L138.7,250.7 L163.4,232.3 L172.9,202.4 L188.1,190.9 L190.0,161.0 L237.5,126.5 Z">
+        <title>简化的中国轮廓（示意，非精确国界）</title>
+      </path>
+      <path class="island" d="M912.0,660.1 L931.0,667.0 L929.1,690.0 L912.0,722.2 L896.8,724.5 L894.9,701.5 L906.3,673.9 Z"><title>台湾岛（现代底图；三国时期未设州）</title></path>
+      <path class="island" d="M689.7,779.7 L714.4,779.7 L722.0,791.2 L712.5,818.8 L693.5,823.4 L678.3,798.1 L676.4,784.3 Z"><title>海南岛（现代底图；三国时期未设州）</title></path>
+      <path class="inner" d="M57.0,425.5 L114.0,416.3 L171.0,411.7 L237.5,409.4 L304.0,402.5 L370.5,377.2 L423.7,340.4">
+        <title>新疆南界（昆仑山—阿尔金山）示意</title>
+      </path>
+
+      <!-- ② 十三州州域色块 -->
+      <g id="provinces">
+      <path class="prov" d="M701.1,446.2 L706.8,423.2 L720.1,404.8 L744.8,395.6 L777.1,400.2 L796.1,414.0 L803.7,432.4 L788.5,450.8 L760.0,460.0 L731.5,466.9 L710.6,460.0 Z" fill="#e57373">
+        <title>司隶校尉部 · 治所 洛阳（今河南洛阳东北）。曹魏制：河南、河内、河东、弘农四郡 —— 洛阳为中心的中原与晋南（不含关中）。</title>
+      </path>
+      <path class="prov" d="M758.1,448.5 L782.8,439.3 L805.6,432.4 L828.4,425.5 L845.5,420.9 L855.0,439.3 L843.6,460.0 L824.6,478.4 L803.7,485.3 L779.0,485.3 L760.0,471.5 Z" fill="#f39c12">
+        <title>豫州 · 治所 谯县（今安徽亳州）。河南东部、安徽北部（淮河以北、伏牛山以东）：颍川、汝南、梁国、沛国、陈国、鲁国。</title>
+      </path>
+      <path class="prov" d="M767.6,402.5 L777.1,377.2 L794.2,358.8 L817.0,347.3 L841.7,351.9 L858.8,363.4 L856.9,386.4 L839.8,404.8 L817.0,414.0 L790.4,414.0 Z" fill="#8fa8b8">
+        <title>冀州 · 治所 邺县（今河北临漳西南）。河北中南部、山东西部、河南北部：魏郡、钜鹿、常山、中山、安平、河间、清河、赵国、勃海。</title>
+      </path>
+      <path class="prov" d="M782.8,430.1 L803.7,416.3 L820.8,404.8 L839.8,414.0 L843.6,430.1 L826.5,441.6 L803.7,448.5 L782.8,441.6 Z" fill="#e6d5a8">
+        <title>兖州 · 治所 昌邑（今山东金乡西北）。山东西南部、河南东北部：陈留、东郡、东平、任城、泰山、济北、山阳、济阴。</title>
+      </path>
+      <path class="prov" d="M834.1,418.6 L860.7,423.2 L885.4,434.7 L894.9,453.1 L900.6,473.8 L881.6,492.2 L860.7,499.1 L839.8,485.3 L834.1,466.9 L841.7,448.5 L837.9,432.4 Z" fill="#a1887f">
+        <title>徐州 · 治所 郯县（今山东郯城北），汉末移治 下邳（今江苏邳州南）。江苏长江以北、山东南部：东海、琅琊、彭城、广陵、下邳。</title>
+      </path>
+      <path class="prov" d="M834.1,386.4 L856.9,377.2 L883.5,374.9 L912.0,372.6 L942.4,381.8 L919.6,409.4 L891.1,416.3 L864.5,411.7 L839.8,400.2 Z" fill="#a5c9a5">
+        <title>青州 · 治所 临淄（今山东淄博临淄北）。山东中东部：平原、济南、乐安、北海、东莱、齐国。</title>
+      </path>
+      <path class="prov" d="M714.4,469.2 L748.6,466.9 L773.3,478.4 L790.4,496.8 L801.8,515.2 L811.3,545.1 L790.4,561.2 L780.9,584.2 L777.1,616.4 L771.4,657.8 L733.4,667.0 L704.9,653.2 L685.9,630.2 L676.4,595.7 L695.4,561.2 L710.6,538.2 L725.8,515.2 L722.0,492.2 Z" fill="#4fa3c7">
+        <title>荆州 · 治所 汉寿（今湖南常德东北），汉末移治 襄阳（今湖北襄阳）。河南南部、湖北大部、湖南全部：南阳、南郡、江夏、零陵、桂阳、武陵、长沙。</title>
+      </path>
+      <path class="prov" d="M805.6,473.8 L834.1,476.1 L855.0,485.3 L885.4,496.8 L904.4,512.9 L919.6,533.6 L912.0,565.8 L900.6,598.0 L881.6,632.5 L855.0,676.2 L824.6,699.2 L798.0,676.2 L780.9,641.7 L777.1,607.2 L786.6,575.0 L798.0,542.8 L803.7,515.2 L798.0,492.2 Z" fill="#5c6bc0">
+        <title>扬州 · 治所 历阳（今安徽和县），汉末移治 寿春（今安徽寿县）。安徽淮河以南、江苏南部、浙江、福建、江西、湖北东部、河南东南部：九江、庐江、丹阳、吴郡、会稽、豫章。</title>
+      </path>
+      <path class="prov" d="M615.6,469.2 L649.8,464.6 L680.2,480.7 L695.4,503.7 L710.6,529.0 L703.0,552.0 L685.9,575.0 L666.9,598.0 L647.9,621.0 L628.9,644.0 L609.9,676.2 L589.0,699.2 L562.4,713.0 L532.0,740.6 L505.4,722.2 L486.4,687.7 L476.9,653.2 L467.4,595.7 L494.0,561.2 L524.4,538.2 L543.4,506.0 L571.9,480.7 L596.6,469.2 Z" fill="#4caf50">
+        <title>益州 · 治所 雒县（今四川广汉北），汉末移治 成都。四川、重庆、云南、贵州大部、陕南汉中及甘鄂各一小部分；南中（越嶲、牂牁、益州、永昌）不单独体现，包含在本州内。</title>
+      </path>
+      <path class="prov" d="M452.2,262.2 L524.4,262.2 L581.4,308.2 L619.4,335.8 L657.4,358.8 L663.1,386.4 L644.1,414.0 L638.4,441.6 L615.6,457.7 L600.4,464.6 L577.6,446.2 L554.8,423.2 L543.4,400.2 L520.6,386.4 L486.4,354.2 L448.4,331.2 L410.4,308.2 L391.4,276.0 L418.0,253.0 Z" fill="#9e8fb2">
+        <title>凉州 · 治所 陇县（今甘肃张家川回族自治县）。甘肃、宁夏、青海湟水流域、陕西西部：陇西、汉阳、武都、金城、安定、北地及河西四郡（武威、张掖、酒泉、敦煌）。</title>
+      </path>
+      <path class="prov" d="M619.4,409.4 L646.0,400.2 L676.4,407.1 L701.1,418.6 L710.6,437.0 L706.8,455.4 L691.6,464.6 L672.6,469.2 L646.0,469.2 L627.0,460.0 L611.8,446.2 L606.1,430.1 L609.9,418.6 Z" fill="#b0353a">
+        <title>雍州 · 治所 长安（今陕西西安）。陕西中部（关中平原）与甘肃东部。建安十八年（213）曹操复《禹贡》九州、省司隶校尉部，以三辅之地置雍州；曹魏沿置，与司隶并存。</title>
+      </path>
+      <path class="prov" d="M710.6,427.8 L720.1,411.7 L742.9,400.2 L771.4,393.3 L779.0,370.3 L771.4,333.5 L761.9,303.6 L733.4,292.1 L704.9,299.0 L685.9,322.0 L676.4,345.0 L703.0,377.2 L714.4,400.2 Z" fill="#6b8e6b">
+        <title>并州 · 治所 晋阳（今山西太原西南）。山西大部与内蒙古南部：上党、太原、上郡、西河、五原、云中、定襄、雁门、朔方。</title>
+      </path>
+      <path class="prov" d="M798.0,340.4 L813.2,317.4 L828.4,294.4 L851.2,262.2 L889.2,239.2 L921.5,225.4 L950.0,223.1 L988.0,239.2 L1022.2,262.2 L1045.0,289.8 L1026.0,331.2 L999.4,349.6 L980.4,331.2 L957.6,315.1 L934.8,305.9 L915.8,317.4 L896.8,315.1 L874.0,322.0 L847.4,331.2 L824.6,345.0 Z" fill="#3d6188">
+        <title>幽州 · 治所 蓟县（今北京大兴西南）。河北北部、辽宁、北京、天津及朝鲜半岛北部：涿郡、广阳、代郡、上谷、渔阳、右北平、辽西、辽东、玄菟、乐浪。图中向东北伸出的部分即乐浪郡（今朝鲜平壤一带）——它超出今国界，正是「历史州域 vs 现代底图」的对照点。</title>
+      </path>
+      </g>
+
+      <!-- ③ 州名 / 治所 / 今地 标注 -->
+      <g id="labels">
+      <g class="label">
+        <text class="l-name" x="733.4" y="430.1">司隶</text>
+        <text class="l-cap" x="733.4" y="445.1">治 洛阳</text>
+        <text class="l-now" x="733.4" y="458.1">今 河南洛阳东北</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="801.8" y="473.8">豫州</text>
+        <text class="l-cap" x="801.8" y="488.8">治 谯县</text>
+        <text class="l-now" x="801.8" y="501.8">今 安徽亳州</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="820.8" y="377.2">冀州</text>
+        <text class="l-cap" x="820.8" y="392.2">治 邺县</text>
+        <text class="l-now" x="820.8" y="405.2">今 河北临漳西南</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="817.0" y="423.2">兖州</text>
+        <text class="l-cap" x="817.0" y="438.2">治 昌邑</text>
+        <text class="l-now" x="817.0" y="451.2">今 山东金乡西北</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="877.8" y="469.2">徐州</text>
+        <text class="l-cap" x="877.8" y="484.2">治 郯县 → 下邳</text>
+        <text class="l-now" x="877.8" y="497.2">今 江苏邳州南</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="889.2" y="400.2">青州</text>
+        <text class="l-cap" x="889.2" y="415.2">治 临淄</text>
+        <text class="l-now" x="889.2" y="428.2">今 山东淄博临淄北</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="737.2" y="556.6">荆州</text>
+        <text class="l-cap" x="737.2" y="571.6">治 汉寿 → 襄阳</text>
+        <text class="l-now" x="737.2" y="584.6">今 湖北襄阳</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="847.4" y="565.8">扬州</text>
+        <text class="l-cap" x="847.4" y="580.8">治 历阳 → 寿春</text>
+        <text class="l-now" x="847.4" y="593.8">今 安徽寿县</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="589.0" y="565.8">益州</text>
+        <text class="l-cap" x="589.0" y="580.8">治 雒县 → 成都</text>
+        <text class="l-now" x="589.0" y="593.8">今 四川成都（含南中）</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="524.4" y="354.2">凉州</text>
+        <text class="l-cap" x="524.4" y="369.2">治 陇县</text>
+        <text class="l-now" x="524.4" y="382.2">今 甘肃张家川</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="657.4" y="432.4">雍州</text>
+        <text class="l-cap" x="657.4" y="447.4">治 长安</text>
+        <text class="l-now" x="657.4" y="460.4">今 陕西西安</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="731.5" y="354.2">并州</text>
+        <text class="l-cap" x="731.5" y="369.2">治 晋阳</text>
+        <text class="l-now" x="731.5" y="382.2">今 山西太原西南</text>
+      </g>
+      <g class="label">
+        <text class="l-name" x="908.2" y="280.6">幽州</text>
+        <text class="l-cap" x="908.2" y="295.6">治 蓟县</text>
+        <text class="l-now" x="908.2" y="308.6">今 北京大兴西南</text>
+      </g>
+      </g>
+
+      <!-- ④ 西域标注（凉州以西，不设州） -->
+      <text class="west" x="199.5" y="326.6">西域</text>
+
+      <!-- ⑤ 图例 + 考据注释 -->
+      <g id="legend">
+      <rect x="18" y="556" width="442" height="316" rx="10" fill="#fffdf8" stroke="#c9bfa8" stroke-width="1.2" opacity="0.97"/>
+      <text x="40" y="586" class="lg-title">图例 · 州域色块（共十三州，不含交州）</text>
+      <rect x="40" y="631" width="21" height="12" rx="2.5" fill="#e57373" fill-opacity="0.75" stroke="#e57373" stroke-width="1"/>
+      <text x="68" y="640" class="lg-item">司隶 · 洛阳</text>
+      <rect x="40" y="655" width="21" height="12" rx="2.5" fill="#f39c12" fill-opacity="0.75" stroke="#f39c12" stroke-width="1"/>
+      <text x="68" y="664" class="lg-item">豫州 · 谯县</text>
+      <rect x="40" y="679" width="21" height="12" rx="2.5" fill="#8fa8b8" fill-opacity="0.75" stroke="#8fa8b8" stroke-width="1"/>
+      <text x="68" y="688" class="lg-item">冀州 · 邺县</text>
+      <rect x="40" y="703" width="21" height="12" rx="2.5" fill="#e6d5a8" fill-opacity="0.75" stroke="#e6d5a8" stroke-width="1"/>
+      <text x="68" y="712" class="lg-item">兖州 · 昌邑</text>
+      <rect x="40" y="727" width="21" height="12" rx="2.5" fill="#a1887f" fill-opacity="0.75" stroke="#a1887f" stroke-width="1"/>
+      <text x="68" y="736" class="lg-item">徐州 · 郯县 → 下邳</text>
+      <rect x="40" y="751" width="21" height="12" rx="2.5" fill="#a5c9a5" fill-opacity="0.75" stroke="#a5c9a5" stroke-width="1"/>
+      <text x="68" y="760" class="lg-item">青州 · 临淄</text>
+      <rect x="40" y="775" width="21" height="12" rx="2.5" fill="#4fa3c7" fill-opacity="0.75" stroke="#4fa3c7" stroke-width="1"/>
+      <text x="68" y="784" class="lg-item">荆州 · 汉寿 → 襄阳</text>
+      <rect x="224" y="631" width="21" height="12" rx="2.5" fill="#5c6bc0" fill-opacity="0.75" stroke="#5c6bc0" stroke-width="1"/>
+      <text x="252" y="640" class="lg-item">扬州 · 历阳 → 寿春</text>
+      <rect x="224" y="655" width="21" height="12" rx="2.5" fill="#4caf50" fill-opacity="0.75" stroke="#4caf50" stroke-width="1"/>
+      <text x="252" y="664" class="lg-item">益州 · 雒县 → 成都</text>
+      <rect x="224" y="679" width="21" height="12" rx="2.5" fill="#9e8fb2" fill-opacity="0.75" stroke="#9e8fb2" stroke-width="1"/>
+      <text x="252" y="688" class="lg-item">凉州 · 陇县</text>
+      <rect x="224" y="703" width="21" height="12" rx="2.5" fill="#b0353a" fill-opacity="0.75" stroke="#b0353a" stroke-width="1"/>
+      <text x="252" y="712" class="lg-item">雍州 · 长安</text>
+      <rect x="224" y="727" width="21" height="12" rx="2.5" fill="#6b8e6b" fill-opacity="0.75" stroke="#6b8e6b" stroke-width="1"/>
+      <text x="252" y="736" class="lg-item">并州 · 晋阳</text>
+      <rect x="224" y="751" width="21" height="12" rx="2.5" fill="#3d6188" fill-opacity="0.75" stroke="#3d6188" stroke-width="1"/>
+      <text x="252" y="760" class="lg-item">幽州 · 蓟县</text>
+      <line x1="40" y1="800" x2="438" y2="800" stroke="#d8cfba" stroke-width="1"/>
+      <text x="40" y="816" class="note">※ 底图为简化示意，非精确国界；州域色块边界亦为示意性勾勒。</text>
+      <text x="40" y="830" class="note">※ 关中东汉属司隶校尉部；建安十八年（213）曹操省司隶置雍州，曹魏沿置。</text>
+      <text x="40" y="844" class="note">　 本图采曹魏制：司隶不含关中，雍州据关中与陇东，两州不重叠。</text>
+      <text x="40" y="858" class="note">※ 幽州东北伸出部分为乐浪郡；岭南（交州）未着色；益州含南中。</text>
+      </g>
+    </svg>
+  </div>
+
+  <footer>
+    数据与渲染分离：本图由 <code>tools/生成州域对照图.py</code> 生成，
+    所有边界均以经纬度定义后统一投影，改动边界或地名只需改数据再重新运行脚本。<br>
+    底图轮廓为简化多边形近似（无外部图片与 API，纯内联 SVG）；
+    州域边界依《中国历史地图集》与《续汉书·郡国志》所列郡国大势勾勒，属示意性绘制。
+  </footer>
+</div>
+</body>
+</html>

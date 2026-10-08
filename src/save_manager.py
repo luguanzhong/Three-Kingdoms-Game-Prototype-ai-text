@@ -18,6 +18,7 @@
 import json
 import logging
 import os
+import sys
 import time
 
 # M5：日志（默认不输出，由入口按 --log-level 配置；日志不替代面向用户的提示文本）
@@ -62,9 +63,23 @@ import time
 项目根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def 定位存档根目录():
+    """定位 `saves/` 的父目录。**打包成 exe 后必须写在 exe 旁边**，
+    否则存档会落进系统的临时解包目录，程序一退出就随之消失。
+
+    1. 源码运行：项目根目录；
+    2. 打包运行（sys.frozen）：可执行文件所在目录。
+    """
+    if getattr(sys, "frozen", False):
+        候选 = os.path.dirname(os.path.abspath(sys.executable))
+        if os.path.isdir(候选):
+            return 候选
+    return 项目根目录
+
+
 def 默认存档目录():
-    """存档目录：项目根目录下的 saves/（与启动时的工作目录无关）。"""
-    return os.path.join(项目根目录, "saves")
+    """存档目录：源码运行时在项目根目录下、打包后与 exe 同级（均与启动时的工作目录无关）。"""
+    return os.path.join(定位存档根目录(), "saves")
 
 
 def 存档路径(存档名, 存档目录=None):

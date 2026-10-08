@@ -22,6 +22,7 @@ ENV/
 # ── 打包 / 构建产物 ──
 build/
 dist/
+*.spec
 *.egg-info/
 .eggs/
 
