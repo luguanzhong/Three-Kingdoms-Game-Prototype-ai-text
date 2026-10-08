@@ -23,6 +23,7 @@ import sys
 仓库根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 入口脚本 = os.path.join(仓库根目录, "ui", "主界面.py")
 配置文件 = os.path.join(仓库根目录, "config")
+资产目录 = os.path.join(仓库根目录, "assets")
 
 
 def 主函数():
@@ -44,6 +45,9 @@ def 主函数():
     if not os.path.isdir(配置文件):
         print(f"找不到配置目录：{配置文件}")
         return 1
+    if not os.path.isdir(资产目录):
+        print(f"找不到资产目录：{资产目录}（字体与配色都在里面，缺了界面会退到系统字体）")
+        return 1
 
     # Windows 上 --add-data 的分隔符是分号（Linux/macOS 是冒号）
     分隔符 = ";" if os.name == "nt" else ":"
@@ -55,6 +59,7 @@ def 主函数():
         "--name", 名字,
         "--paths", os.path.join(仓库根目录, "src"),
         "--add-data", f"{配置文件}{分隔符}config",   # 配置随包，缺省也能跑
+        "--add-data", f"{资产目录}{分隔符}assets",   # 美术资产随包（字体/配色/台账）
         # 引擎与门面是"按名字导入"的本地模块，显式声明避免静态分析漏掉
         "--hidden-import", "蜀汉突围",
         "--hidden-import", "config_loader",

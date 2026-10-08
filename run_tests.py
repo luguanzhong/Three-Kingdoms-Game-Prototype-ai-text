@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""一键测试入口：python run_tests.py [--fast]
+"""一键测试入口：python run_tests.py [--fast] [--区域 名称]
 
-- 默认：发现并运行 tests/ 下全部用例（含"旧自测全量回归"，整体约 1~2 分钟）。
+- 默认：发现并运行 tests/ 下全部用例（含"旧自测全量回归"，整体约 1.5 分钟）。
 - --fast：跳过耗时的旧自测全量回归，只跑秒级的分类用例（适合改代码时快速自检）。
+- --区域：只跑与某个区域相关的用例（区域隔离的配套入口，互不干扰）。
 退出码：全部通过 0，否则 1（可直接用于 CI 或 git hook）。
 """
 import argparse
@@ -11,9 +12,24 @@ import sys
 import time
 import unittest
 
+# 区域 → 相关测试模块（与 docs/区域划分与溯源.md 的区域表对应）
+区域用例 = {
+    "引擎": ("test_rules", "test_boundaries", "test_endings", "test_architecture", "test_legacy_suite"),
+    "数值": ("test_boundaries",),
+    "地理": ("test_map",),
+    "美术": ("test_assets",),
+    "界面": ("test_gui_facade", "test_map", "test_assets"),
+    "文案": (),          # 尚未抽离，暂无专属用例
+    "测试": ("test_architecture",),
+    "文档": (),
+    "构建": (),
+    "归档": ("test_architecture",),
+    "运行": ("test_gui_facade",),
+}
+
 
 def 展开用例(套件):
-    """把嵌套的 TestSuite 展平成单个用例列表（用于 --fast 过滤）。"""
+    """把嵌套的 TestSuite 展平成单个用例列表（用于 --fast / --区域 过滤）。"""
     for 元素 in 套件:
         if isinstance(元素, unittest.TestSuite):
             yield from 展开用例(元素)
@@ -25,6 +41,8 @@ def 主函数():
     解析 = argparse.ArgumentParser(description="蜀汉突围 · 一键测试")
     解析.add_argument("--fast", action="store_true",
                       help="跳过旧自测全量回归（耗时较久），只跑分类用例")
+    解析.add_argument("--区域", choices=sorted(区域用例),
+                      help="只跑与该区域相关的用例（见 docs/区域划分与溯源.md）")
     参数 = 解析.parse_args()
 
     仓库根 = os.path.dirname(os.path.abspath(__file__))
@@ -36,12 +54,23 @@ def 主函数():
         return 1
 
     套件 = unittest.TestLoader().discover(start_dir=tests目录, top_level_dir=tests目录)
+    过滤说明 = []
     if 参数.fast:
         用例们 = [用例 for 用例 in 展开用例(套件) if "旧自测" not in 用例.id()]
         套件 = unittest.TestSuite(用例们)
+        过滤说明.append("--fast：已跳过旧自测全量回归")
+    if 参数.区域:
+        模块们 = 区域用例[参数.区域]
+        if not 模块们:
+            用例们 = []
+        else:
+            用例们 = [用例 for 用例 in 展开用例(套件)
+                    if any(模块 in 用例.id() for 模块 in 模块们)]
+        套件 = unittest.TestSuite(用例们)
+        过滤说明.append(f"--区域 {参数.区域}：只跑 {'、'.join(模块们) if 模块们 else '（暂无专属用例）'}")
 
     print("=" * 68)
-    print("蜀汉突围 · 一键测试" + ("（--fast：已跳过旧自测全量回归）" if 参数.fast else ""))
+    print("蜀汉突围 · 一键测试" + ("（" + "；".join(过滤说明) + "）" if 过滤说明 else ""))
     print("=" * 68)
     开始 = time.time()
     结果 = unittest.TextTestRunner(verbosity=2, stream=sys.stdout).run(套件)

@@ -38,14 +38,17 @@ for 目录 in (源码目录, 仓库根目录, 自己目录):
         sys.path.insert(0, 目录)
 
 import 游戏接口  # noqa: E402  （本地模块）
+import 资产  # noqa: E402  （本地模块：配色与字体一律经它读取）
 import 地图  # noqa: E402  （本地模块：游戏内图形地图）
 
 # 从引擎打印的菜单里认出「可点击选项」：1. xxx ／ A. xxx ／ 1、xxx ／ 1) xxx
 选项模式 = re.compile(r"^\s*([0-9]{1,2}|[A-Za-z])[.、)]\s*(\S.*)$")
 
+# 配色一律来自 assets/theme.json（经 ui/资产.py 读取），本文件不得写死颜色。
 配色 = {
-    "底": "#f6f3ea", "面": "#fffdf8", "边": "#c9bfa8",
-    "主字": "#2b2620", "次字": "#6f6558", "蜀": "#2f6b3f", "魏": "#8c3b3b", "吴": "#39558c",
+    "底": 资产.颜色("窗口底"), "面": 资产.颜色("面板底"), "边": 资产.颜色("边框"),
+    "主字": 资产.颜色("主字"), "次字": 资产.颜色("次字"),
+    "蜀": 资产.颜色("蜀汉"), "魏": 资产.颜色("曹魏"), "吴": 资产.颜色("东吴"),
 }
 
 
@@ -155,22 +158,22 @@ class 主窗口(tk.Tk):
         except tk.TclError:
             pass
         样式.configure(".", background=配色["底"], foreground=配色["主字"],
-                    font=("Microsoft YaHei UI", 10))
+                    font=资产.字体("正文", 10))
         样式.configure("TFrame", background=配色["底"])
         样式.configure("TLabel", background=配色["底"], foreground=配色["主字"])
-        样式.configure("提示.TLabel", font=("Microsoft YaHei UI", 11, "bold"),
-                    foreground="#1f1a15")
-        样式.configure("次.TLabel", foreground=配色["次字"], font=("Microsoft YaHei UI", 9))
-        样式.configure("标题.TLabel", font=("Microsoft YaHei UI", 11, "bold"), foreground="#3a2f24")
-        样式.configure("数值.TLabel", font=("Consolas", 11, "bold"))
+        样式.configure("提示.TLabel", font=资产.字体("标题", 11, True),
+                    foreground=资产.颜色("深字"))
+        样式.configure("次.TLabel", foreground=配色["次字"], font=资产.字体("正文", 9))
+        样式.configure("标题.TLabel", font=资产.字体("标题", 11, True), foreground=资产.颜色("标题字"))
+        样式.configure("数值.TLabel", font=资产.字体("等宽", 11, True))
         样式.configure("TLabelframe", background=配色["底"], bordercolor=配色["边"])
-        样式.configure("TLabelframe.Label", background=配色["底"], foreground="#4a4036",
-                    font=("Microsoft YaHei UI", 10, "bold"))
+        样式.configure("TLabelframe.Label", background=配色["底"], foreground=资产.颜色("小标题字"),
+                    font=资产.字体("标题", 10, True))
         样式.configure("TButton", padding=(6, 5))
-        样式.configure("行动.TButton", font=("Microsoft YaHei UI", 10, "bold"), padding=(6, 8))
-        样式.configure("回合.TButton", font=("Microsoft YaHei UI", 11, "bold"), padding=(6, 10))
+        样式.configure("行动.TButton", font=资产.字体("标题", 10, True), padding=(6, 8))
+        样式.configure("回合.TButton", font=资产.字体("标题", 11, True), padding=(6, 10))
         样式.configure("Treeview", rowheight=23, fieldbackground=配色["面"])
-        样式.configure("Treeview.Heading", font=("Microsoft YaHei UI", 9, "bold"))
+        样式.configure("Treeview.Heading", font=资产.字体("标题", 9, True))
 
     # ── 菜单栏 ──
     def _建菜单(self):
@@ -266,8 +269,8 @@ class 主窗口(tk.Tk):
         态势框 = ttk.Frame(self.书)
         态势框.rowconfigure(0, weight=1)
         态势框.columnconfigure(0, weight=1)
-        self.态势文本 = tk.Text(态势框, wrap="none", font=("Consolas", 9),
-                           bg="#1e2430", fg="#d8e0ea", insertbackground="#d8e0ea",
+        self.态势文本 = tk.Text(态势框, wrap="none", font=资产.字体("等宽", 9),
+                           bg=资产.颜色("日志底"), fg=资产.颜色("日志字"), insertbackground=资产.颜色("日志字"),
                            relief="flat", padx=10, pady=6, height=9)
         self.态势文本.grid(row=0, column=0, sticky="nsew")
         滚 = ttk.Scrollbar(态势框, orient="vertical", command=self.态势文本.yview)
@@ -285,8 +288,8 @@ class 主窗口(tk.Tk):
         底 = ttk.LabelFrame(self, text=" 战报 ", padding=(8, 4, 8, 8))
         底.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=12, pady=(0, 6))
         底.columnconfigure(0, weight=1)
-        self.战报 = tk.Text(底, height=11, wrap="word", font=("Microsoft YaHei UI", 10),
-                         bg="#fffdf8", fg="#241f18", relief="flat", padx=8, pady=6)
+        self.战报 = tk.Text(底, height=11, wrap="word", font=资产.字体("正文", 10),
+                         bg=资产.颜色("面板底"), fg=资产.颜色("标签字"), relief="flat", padx=8, pady=6)
         self.战报.grid(row=0, column=0, sticky="nsew")
         战滚 = ttk.Scrollbar(底, orient="vertical", command=self.战报.yview)
         战滚.grid(row=0, column=1, sticky="ns")
@@ -336,9 +339,9 @@ class 主窗口(tk.Tk):
         滚 = ttk.Scrollbar(框, orient="vertical", command=表.yview)
         滚.grid(row=0, column=1, sticky="ns")
         表.configure(yscrollcommand=滚.set)
-        表.tag_configure("殁", foreground="#9a9a9a")
-        表.tag_configure("俘", foreground="#8c3b3b")
-        表.tag_configure("伤", foreground="#a06a1f")
+        表.tag_configure("殁", foreground=资产.颜色("已殁灰"))
+        表.tag_configure("俘", foreground=资产.颜色("危险"))
+        表.tag_configure("伤", foreground=资产.颜色("重伤橙"))
         return 表
 
     def _建行动面板(self, 父):
@@ -497,7 +500,7 @@ class 主窗口(tk.Tk):
                  f"·　{局面['控制城池']} 城在握")
         self.大事标签.configure(
             text=("本回合大事：已执行（请结束本回合）" if 局面["大事已用"] else "本回合大事：可用"),
-            foreground=("#a03030" if 局面["大事已用"] else "#2f6b3f"))
+            foreground=(资产.颜色("强调") if 局面["大事已用"] else 资产.颜色("成功")))
 
         值 = {
             "回合": f"{局面['回合']} / {局面['总回合']}",
@@ -811,6 +814,20 @@ def 自检():
 
         态势 = 局.态势图()
         记(f"战区态势图渲染：{len(态势.splitlines())} 行", bool(态势.strip()))
+
+        # —— 美术资产区域：主题 / 字体私有注册 / 台账（打包后尤其要确认字体被打进去了）——
+        记(f"主题已载入：界面配色 {len(资产.主题['界面配色'])} 项 · "
+          f"地图配色 {len(资产.主题['地图配色'])} 项 · 字体 {len(资产.主题['字体'])} 组",
+            bool(资产.主题["界面配色"]) and bool(资产.主题["字体"]))
+        注册 = 资产.注册字体文件()
+        记(f"字体进程私有注册：{len(注册)} 个文件", bool(注册))
+        首选 = 资产.主题["字体"]["正文"]["候选"][0]
+        实际 = 资产.字体("正文")[0]
+        记(f"正文字体解析为「{实际}」，候选链首位为「{首选}」", 实际 == 首选)
+        台账错误 = 资产.校验台账()
+        记(f"资产台账校验通过（共 {资产.资产统计()['总数']} 条资产）", not 台账错误)
+        if 台账错误:
+            结果行.append("      · " + "；".join(台账错误[:3]))
 
         # —— 地图：数据 / 渲染 / 命中 ——
         记(f"地图数据已载入：{len(窗口.地图数据['州'])} 州 · "

@@ -20,6 +20,8 @@ import json
 import os
 import tkinter as tk
 
+import 资产  # noqa: E402  （同目录：配色与字体一律经它读取）
+
 # —— 投影：与 tools/生成州域对照图.py 完全一致（等距圆柱近似）——
 经度基准, 经度系数 = 73.0, 19.0
 纬度基准, 纬度系数 = 54.0, 23.0
@@ -41,16 +43,21 @@ def 混合(色一, 色二, 比例):
                               int(b1 + (b2 - b1) * 比例))
 
 
+# 配色一律来自 assets/theme.json（经 ui/资产.py 读取），本文件不得写死颜色。
+# 这里把主题里的完整键名映射成原先的短键名，其余代码保持不变。
 配色 = {
-    "海": "#dde8f0", "陆": "#f2eee2", "轮廓": "#98a2ab", "界线": "#bcc4ca",
-    "州名": "#8f8578", "州名描边": "#f2eee2",
-    "蜀": "#2f6b3f", "魏": "#8c3b3b", "蜀浅": "#5d9668", "魏浅": "#b5706f",
-    "围攻": "#d98324", "标签底": "#fffdf8", "标签边": "#c3b9a4",
-    "标签字": "#241f18", "标签次": "#6f6558", "选中": "#1f6f9c",
+    "海": 资产.地图颜色("海"), "陆": 资产.地图颜色("陆"),
+    "轮廓": 资产.地图颜色("轮廓"), "界线": 资产.地图颜色("界线"),
+    "州名": 资产.地图颜色("州名"), "州名描边": 资产.地图颜色("州名描边"),
+    "蜀": 资产.地图颜色("蜀汉"), "魏": 资产.地图颜色("曹魏"),
+    "蜀浅": 资产.地图颜色("蜀汉浅"), "魏浅": 资产.地图颜色("曹魏浅"),
+    "围攻": 资产.地图颜色("围攻"), "选中": 资产.地图颜色("选中"),
+    "标签底": 资产.地图颜色("标签底"), "标签边": 资产.地图颜色("标签边"),
+    "标签字": 资产.地图颜色("标签字"), "标签次": 资产.地图颜色("标签次"),
 }
-州色混合比例 = 0.34          # 州色混进陆地色的比例
-标签字号 = 9
-州名字号 = 9
+州色混合比例 = 资产.地图参数("州色混合比例", 0.34)          # 州色混进陆地色的比例
+标签字号 = 资产.字号("地图标注", 9)
+州名字号 = 资产.字号("地图州名", 9)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -113,8 +120,8 @@ class 地图画布(tk.Canvas):
     """可缩放 / 可平移 / 城池可点的游戏地图。"""
 
     最小缩放, 最大缩放 = 0.25, 24.0
-    点击命中半径 = 14
-    标签缩放门槛 = 4.0          # 低于此缩放只画城池点位与名称提示，不画数据标签
+    点击命中半径 = 资产.地图参数("点击命中半径", 14)
+    标签缩放门槛 = 资产.地图参数("标签缩放门槛", 4.0)          # 低于此缩放只画城池点位与名称提示，不画数据标签
 
     def __init__(self, 父窗口, 数据, 城池回调=None, **关键字):
         super().__init__(父窗口, background=配色["海"], highlightthickness=0,
@@ -263,7 +270,7 @@ class 地图画布(tk.Canvas):
         if not self.数据:
             self.create_text(self.winfo_width() / 2, self.winfo_height() / 2,
                             text="地图数据不可用（config/map.json 缺失或非法）",
-                            fill="#8c3b3b", font=("Microsoft YaHei UI", 11))
+                            fill=资产.地图颜色("错误字"), font=资产.字体("正文", 11))
             return
         self.create_rectangle(0, 0, self.winfo_width(), self.winfo_height(),
                               fill=配色["海"], width=0, tags="背景")
@@ -289,9 +296,10 @@ class 地图画布(tk.Canvas):
 
     def _画州域(self):
         for 州 in self.数据["州"]:
-            色 = 混合(配色["陆"], 州.get("色", "#cccccc"), 州色混合比例)
+            色 = 混合(配色["陆"], 州.get("色", 资产.地图颜色("默认州色")), 州色混合比例)
             self.create_polygon(self._点列表到屏幕(州["边界"]), fill=色,
-                                outline=混合(色, "#3c3228", 0.45), width=0.8,
+                                outline=混合(色, 资产.地图颜色("州界描边基色"),
+                               资产.地图参数("州界描边混合比例", 0.45)), width=0.8,
                                 tags=("地图", f"州_{州['名']}"))
 
     def _画州名(self):
@@ -303,7 +311,7 @@ class 地图画布(tk.Canvas):
                 continue
             x, y = self.世界到屏幕(*投影(*州["锚点"]))
             self.create_text(x, y, text=州["名"], fill=配色["州名"],
-                             font=("Microsoft YaHei UI", 州名字号),
+                             font=资产.字体("正文", 州名字号),
                              tags="地图")
 
     def _取城池状态(self, 城):
@@ -364,9 +372,9 @@ class 地图画布(tk.Canvas):
                 self.create_oval(x - 半径 - 5, y - 半径 - 5, x + 半径 + 5, y + 半径 + 5,
                                  outline=配色["围攻"], width=3, tags="地图")
                 self.create_text(x, y - 半径 - 12, text="围攻中", fill=配色["围攻"],
-                                 font=("Microsoft YaHei UI", 8, "bold"), tags="地图")
+                                 font=资产.字体("标题", 8, True), tags="地图")
             self.create_oval(x - 半径, y - 半径, x + 半径, y + 半径, fill=主色,
-                             outline="#ffffff", width=1.6, tags=("地图", f"城_{城['名']}"))
+                             outline=资产.地图颜色("城池描边"), width=1.6, tags=("地图", f"城_{城['名']}"))
         for 城, 状态, x, y in 城池们:
             if self.缩放 < self.标签缩放门槛:
                 continue        # 缩得太小时只留点位，避免十个标签挤成一团（放大即出现）
@@ -412,13 +420,13 @@ class 地图画布(tk.Canvas):
                                          width=1.2, tags="地图")
                     self.create_text(框[0] + 8, 框[1] + 5, text=文本, anchor="nw",
                                     fill=配色["标签字"],
-                                    font=("Microsoft YaHei UI", 标签字号), tags="地图")
+                                    font=资产.字体("正文", 标签字号), tags="地图")
                     return 框
         # 实在放不下（画布过小）：仍画一个，保证信息不丢
         框 = (x + 13, y - 估高 / 2, x + 13 + 估宽, y + 估高 / 2)
         self.create_rectangle(*框, fill=配色["标签底"], outline=主色, width=1.2, tags="地图")
         self.create_text(框[0] + 8, 框[1] + 5, text=文本, anchor="nw",
-                        fill=配色["标签字"], font=("Microsoft YaHei UI", 标签字号), tags="地图")
+                        fill=配色["标签字"], font=资产.字体("正文", 标签字号), tags="地图")
         return 框
 
     def _画图例(self):
@@ -433,18 +441,18 @@ class 地图画布(tk.Canvas):
         偏移 = 10
         for 符号, 色, 文字 in 条目:
             self.create_text(x1 + 偏移, y1 + 顶距 + 2, text=符号, anchor="w", fill=色,
-                            font=("Microsoft YaHei UI", 11), tags="图例")
+                            font=资产.字体("正文", 11), tags="图例")
             self.create_text(x1 + 偏移 + 15, y1 + 顶距 + 3, text=文字, anchor="w",
-                            fill=配色["标签次"], font=("Microsoft YaHei UI", 8),
+                            fill=配色["标签次"], font=资产.字体("正文", 8),
                             tags="图例")
             偏移 += 15 + len(文字) * 12 + 16
         self.create_text(x1 + 10, y1 + 顶距 + 行高 + 4,
                         text="滚轮缩放 · 拖动平移 · 点击城池查看详情与行动",
                         anchor="nw", fill=配色["标签次"],
-                        font=("Microsoft YaHei UI", 8), tags="图例")
+                        font=资产.字体("正文", 8), tags="图例")
         self.create_text(x1 + 宽 - 10, y1 + 顶距 + 3, text=f"缩放 {self.缩放:.2f}×",
                         anchor="e", fill=配色["标签次"],
-                        font=("Microsoft YaHei UI", 8), tags="图例")
+                        font=资产.字体("正文", 8), tags="图例")
 
     # ── 供测试与外部查询 ──
     def 城池屏幕位置(self, 城名):

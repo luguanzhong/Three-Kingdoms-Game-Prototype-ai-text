@@ -20,7 +20,7 @@ for 目录 in (仓库根目录, 源码目录):
 # （历史备份快照在 legacy/ 下、tests/ 下必须写出随机关键字，故这两处不参与扫描）
 # 图形界面与引擎门面同样是生产代码，故一并纳入零随机与"仅标准库"检查
 生产模块 = ("src/蜀汉突围.py", "src/config_loader.py", "src/save_manager.py",
-        "src/游戏接口.py", "ui/主界面.py", "ui/地图.py")
+        "src/游戏接口.py", "ui/主界面.py", "ui/地图.py", "ui/资产.py")
 # 允许出现的本地模块名（非第三方）
 本地模块名 = ("config_loader", "save_manager", "游戏接口", "主界面", "蜀汉突围")
 
