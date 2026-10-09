@@ -25,12 +25,13 @@ import 夹具
                     + r")(?![A-Za-z_])", re.IGNORECASE)
 # 允许的标准库模块（生产代码只应使用这些 + 本地模块）
 # tkinter 与 re：图形界面使用；ctypes 与 hashlib：资产层用它做 Windows 进程私有字体注册
-# 与台账校验值计算。全部属于 Python 标准库，因此"零第三方依赖"的约束在引入 GUI 与资产层后依然成立。
+# 与台账校验值计算；math：地图改用兰勃特等角圆锥投影后需要三角函数与对数。
+# 全部属于 Python 标准库，因此"零第三方依赖"的约束在引入 GUI 与资产层后依然成立。
 标准库白名单 = {"os", "sys", "time", "json", "io", "contextlib", "shutil",
                 "tempfile", "importlib", "importlib.util", "py_compile",
                 "logging", "argparse", "re", "tkinter", "tkinter.ttk",
                 "tkinter.messagebox", "tkinter.font", "traceback", "ctypes",
-                "hashlib"}
+                "hashlib", "math"}
 
 
 def 是关键字参数(行, 匹配):

@@ -22,10 +22,12 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 根目录 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(根目录, "ui"))
+sys.path.insert(0, os.path.join(根目录, "src"))
 
-# 与项目一致的投影（等距圆柱近似）
-经度基准, 经度系数 = 73.0, 19.0
-纬度基准, 纬度系数 = 54.0, 23.0
+# 投影一律复用 ui/地图.py（它读 config/投影.json），不再在本文件里抄一份公式
+import 地图  # noqa: E402
+
 中国框 = (73.0, 18.0, 136.0, 54.5)          # 经度下限、纬度下限、经度上限、纬度上限
 
 自然地球 = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/"
@@ -37,7 +39,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 def 投影(经纬):
-    return ((经纬[0] - 经度基准) * 经度系数, (纬度基准 - 经纬[1]) * 纬度系数)
+    return 地图.投影(经纬[0], 经纬[1])
 
 
 def 取图层(名):
