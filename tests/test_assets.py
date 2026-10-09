@@ -67,17 +67,51 @@ class 主题与台账(unittest.TestCase):
         self.assertEqual(错误, [], "资产台账校验未通过：\n" + "\n".join(错误))
 
     def test_第三方资产必须随附许可文本(self):
+        """溯源 D 层：第三方资产必须随附一份有实质内容的许可/授权文本。"""
         台账, _ = 资产.载入台账()
         第三方 = [条 for 条 in 台账.get("资产", []) if 条.get("归属") == "第三方"]
-        self.assertTrue(第三方, "本轮至少应有一条第三方资产（过渡字体）以验证该规则")
+        self.assertTrue(第三方, "本轮至少应有一条第三方资产（过渡字体、官方底图）以验证该规则")
         for 条 in 第三方:
             self.assertTrue(条.get("许可文件"), f"{条.get('名称')} 缺少许可文件字段")
             全路径 = os.path.join(资产.资产根目录(), 条["许可文件"])
             self.assertTrue(os.path.isfile(全路径), f"许可文本不存在：{条['许可文件']}")
             with open(全路径, encoding="utf-8") as 文件:
                 正文 = 文件.read()
+            self.assertGreater(len(正文.strip()), 200,
+                               f"{条.get('名称')} 的许可/授权文本太短，等于没说明白")
+
+    def test_字体资产必须随附OFL全文(self):
+        """字体许可更严：不能只写一句"用了某字体"，必须带 OFL 全文。"""
+        台账, _ = 资产.载入台账()
+        字体条 = [条 for 条 in 台账.get("资产", []) if 条.get("类别") == "字体"]
+        self.assertTrue(字体条, "本轮应有一条过渡字体资产")
+        for 条 in 字体条:
+            if 条.get("归属") != "第三方":
+                continue
+            全路径 = os.path.join(资产.资产根目录(), 条["许可文件"])
+            with open(全路径, encoding="utf-8") as 文件:
+                正文 = 文件.read()
             self.assertIn("SIL OPEN FONT LICENSE", 正文.upper().replace("  ", " "),
-                          "许可文本应包含 OFL 全文")
+                          f"{条.get('名称')} 的许可文本应包含 OFL 全文")
+            self.assertIn("Reserved Font Name", 正文,
+                          f"{条.get('名称')} 的 OFL 文本应保留 Reserved Font Name 条款，"
+                          "否则无法解释为何要改用「蜀汉过渡楷」这个字体名")
+
+    def test_官方底图必须写明风险与替换路径(self):
+        """官方标准地图是"用得住、但传不得"的资产：说明里必须同时写清风险与退路。"""
+        台账, _ = 资产.载入台账()
+        底图条 = [条 for 条 in 台账.get("资产", [])
+                  if 条.get("类别") == "图片" and "地图" in 条.get("名称", "")]
+        self.assertTrue(底图条, "本轮应登记一张官方标准地图底图")
+        for 条 in 底图条:
+            全路径 = os.path.join(资产.资产根目录(), 条["许可文件"])
+            self.assertTrue(os.path.isfile(全路径), f"说明文本不存在：{条['许可文件']}")
+            with open(全路径, encoding="utf-8") as 文件:
+                正文 = 文件.read()
+            for 关键词, 理由 in (("审图号", "要写清底图是哪一号标准地图"),
+                                 ("送审", "要写清修改后公开传播需要重新送审"),
+                                 ("替换", "要写清将来换掉它怎么换")):
+                self.assertIn(关键词, 正文, f"官方底图说明里缺少「{关键词}」：{理由}")
 
     def test_每条资产都标了状态与替换计划(self):
         台账, _ = 资产.载入台账()
