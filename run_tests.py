@@ -16,8 +16,8 @@ import unittest
 区域用例 = {
     "引擎": ("test_rules", "test_boundaries", "test_endings", "test_architecture", "test_legacy_suite"),
     "数值": ("test_boundaries",),
-    "地理": ("test_map", "test_tracing", "test_baseimage"),
-    "美术": ("test_assets", "test_baseimage"),
+    "地理": ("test_map", "test_tracing", "test_baseimage", "test_basemap", "test_projection"),
+    "美术": ("test_assets", "test_baseimage", "test_basemap"),
     "界面": ("test_gui_facade", "test_map", "test_assets"),
     "文案": (),          # 尚未抽离，暂无专属用例
     "测试": ("test_architecture",),

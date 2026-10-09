@@ -22,6 +22,7 @@ import os
 import tkinter as tk
 
 import 资产  # noqa: E402  （同目录：配色与字体一律经它读取）
+import 底图  # noqa: E402  （同目录：官方底图图层）
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -293,6 +294,14 @@ class 地图画布(tk.Canvas):
         self.悬停郡 = None
         self.显示骨架 = True          # 郡界骨架（有属县依据的 6 郡）
         self.显示粗骨架 = False       # 仅有治所单点的郡（更不可信，默认不显示）
+        # ── 官方底图（默认关闭：关闭时缩放、绘制、命中判定与以前完全一致）──
+        self.显示底图 = False
+        self.底图层 = None            # ui/底图.py 的 底图图层
+        self.底图问题 = []            # 载入/绘制过程中的说明，供状态栏与自检使用
+        self._底图项 = None           # 画布上的 image 元素 id
+        self._底图键 = None           # 上一帧的绘制键（避免每帧重裁图）
+        self._底图裁原点 = (0, 0)     # 上一帧实际裁出的图像像素原点
+        self._底图图 = None           # 必须留引用，否则 PhotoImage 会被回收成空白
         self.局面 = {}
         self.标签矩形 = {}          # 城名 -> (x1, y1, x2, y2) 屏幕坐标，用于防重叠
         self._拖动起点 = None
@@ -480,6 +489,7 @@ class 地图画布(tk.Canvas):
             return
         self.create_rectangle(0, 0, self.winfo_width(), self.winfo_height(),
                               fill=配色["海"], width=0, tags="背景")
+        self._铺底图()          # 官方底图铺在最下层（默认关闭）
         self._画底图()
         self._画州域()
         self._画州名()
@@ -537,6 +547,126 @@ class 地图画布(tk.Canvas):
         self.create_text(x1 + 10, y1 + 8, anchor="nw", justify="left",
                         text="\n".join(行们), fill=配色["标签字"],
                         font=资产.字体("正文", 9), tags="郡提示")
+
+    def _铺底图(self):
+        """把官方标准地图铺在最下层（默认关闭）。
+
+        做法：算出画布可见范围对应的**图像像素矩形** → 只裁这一块 → 按 m/n 整数档位缩放
+        → 贴到该矩形左上角对应的画布位置。因为 subsample(n).zoom(m) 的像素相位是确定的，
+        裁块的第一个像素正好代表图像像素 (u0, v0)，所以底图与矢量图层是**逐像素对齐**的。
+        """
+        if not self.显示底图 or self.底图层 is None:
+            return
+        图层 = self.底图层
+        if not 图层.可用():
+            self._底图问题一次(图层.缺图说明())
+            return
+        画布宽, 画布高 = max(self.winfo_width(), 50), max(self.winfo_height(), 50)
+        倍率 = 图层.世界每像素() * self.缩放          # 画布像素 / 图像像素
+        m, n, 精确 = 图层.吸附档位(倍率)
+        # 可见范围（世界坐标）→ 图像像素矩形，四周各留一点余量，避免平移时露白边
+        角 = [图层.世界到像素(*self.屏幕到世界(x, y))
+              for x, y in ((0, 0), (画布宽, 0), (0, 画布高), (画布宽, 画布高))]
+        if any(点 is None for 点 in 角):
+            return
+        余量 = 2
+        u0 = min(点[0] for 点 in 角) - 余量
+        v0 = min(点[1] for 点 in 角) - 余量
+        u1 = max(点[0] for 点 in 角) + 余量
+        v1 = max(点[1] for 点 in 角) + 余量
+        if u1 < 0 or v1 < 0 or u0 > 图层.图像宽 or v0 > 图层.图像高:
+            return                                     # 图完全不在视野里
+        键 = (int(u0), int(v0), int(u1), int(v1), m, n)
+        if 键 != self._底图键 or self._底图项 is None:
+            图 = 图层.造块(u0, v0, u1, v1, m, n)
+            if 图 is None:
+                for 说明 in 图层.错误:
+                    self._底图问题一次(说明)
+                return
+            if self._底图项 is not None:
+                self.delete(self._底图项)
+            裁左 = max(0, min(int(u0), 图层.图像宽 - 1))
+            裁上 = max(0, min(int(v0), 图层.图像高 - 1))
+            屏幕x, 屏幕y = self.世界到屏幕(*图层.像素到世界(裁左, 裁上))
+            self._底图项 = self.create_image(round(屏幕x), round(屏幕y), image=图,
+                                            anchor="nw", tags="官方底图")
+            self._底图键 = 键
+            self._底图裁原点 = (裁左, 裁上)
+            self._底图图 = 图                          # 必须留引用，否则会被回收成空白
+        self.tag_lower(self._底图项)
+
+    def _底图问题一次(self, 说明):
+        if 说明 not in self.底图问题:
+            self.底图问题.append(说明)
+
+    def 底图状态(self):
+        """给状态栏/自检用的一句话。"""
+        if not self.显示底图:
+            return "底图：关闭"
+        if self.底图层 is None:
+            return "底图：不可用"
+        if not self.底图层.可用():
+            return "底图：缺图片文件"
+        m, n, 精确 = self.底图层.吸附档位(self.底图层.世界每像素() * self.缩放)
+        return f"底图：开启（{m}/{n} 档，1 图像像素 = {精确:.3f} 画布像素）"
+
+    def 设显示底图(self, 显示):
+        """开关官方底图。
+
+        打开时**吸附一次缩放档位**，因为底图的缩放只能是 m/n；
+        关闭时不碰缩放 —— 底图关闭后的行为与以前完全一致（这是硬要求）。
+        """
+        self.显示底图 = bool(显示)
+        if self.显示底图 and self.底图层 is None:
+            self.载入底图()
+        if self.显示底图 and self.底图层 is not None and self.底图层.可用():
+            self.对齐底图档位()
+        if not self.显示底图:
+            self._底图键 = None
+            self._底图项 = None          # 必须清掉：delete("all") 之后这个 id 已经失效
+            self._底图图 = None
+        self.重绘()
+
+    def 载入底图(self):
+        """载入 config/底图配准.json 并造出图层。失败只记说明，不抛异常、不影响其他图层。"""
+        数据, 问题 = 底图.载入配准()
+        for 说明 in 问题:
+            self._底图问题一次(说明)
+        if 数据 is None:
+            self.底图层 = None
+            return None
+        try:
+            self.底图层 = 底图.底图图层(数据)
+        except (KeyError, TypeError, ValueError) as 异常:
+            self._底图问题一次(f"底图配准数据不合用：{异常!r}")
+            self.底图层 = None
+            return None
+        for 说明 in self.底图层.错误:
+            self._底图问题一次(说明)
+        return self.底图层
+
+    def 对齐底图档位(self, 锚点=None):
+        """把画布缩放吸附到"底图能被整数 m/n 精确表示"的档位。
+
+        宁可缩放档位粗一点，也不要底图与州郡界之间出现系统性错位。
+        吸附时以画面中心（或给定屏幕点）为锚点，避免视图跳走。
+        """
+        if self.底图层 is None or not self.底图层.可用():
+            return False
+        图层 = self.底图层
+        倍率 = 图层.世界每像素() * self.缩放
+        m, n, 精确 = 图层.吸附档位(倍率)
+        新缩放 = 精确 / 图层.世界每像素()
+        新缩放 = max(self.最小缩放, min(self.最大缩放, 新缩放))
+        if abs(新缩放 - self.缩放) < 1e-12:
+            return False
+        锚点 = 锚点 or (self.winfo_width() / 2, self.winfo_height() / 2)
+        世界x, 世界y = self.屏幕到世界(锚点[0], 锚点[1])
+        self.缩放 = 新缩放
+        self.偏移x = 锚点[0] - 世界x * self.缩放
+        self.偏移y = 锚点[1] - 世界y * self.缩放
+        self._底图键 = None
+        return True
 
     def _画底图(self):
         轮廓 = self.数据["底图"].get("中国轮廓") or []

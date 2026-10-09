@@ -248,6 +248,10 @@ class 主窗口(tk.Tk):
                        command=self._切换骨架).pack(side="right", padx=(8, 0))
         ttk.Checkbutton(工具, text="含仅治所（虚线·更不可信）", variable=self.粗骨架开关,
                        command=self._切换骨架).pack(side="right", padx=(8, 0))
+        # 官方底图开关（默认关闭：关闭时缩放与绘制行为与以前完全一致）
+        self.底图开关 = tk.BooleanVar(value=False)
+        ttk.Checkbutton(工具, text="官方底图", variable=self.底图开关,
+                       command=self._切换底图).pack(side="right", padx=(8, 0))
         self.地图提示 = ttk.Label(工具, text="", style="次.TLabel")
         self.地图提示.pack(side="left", padx=(10, 0))
 
@@ -588,6 +592,24 @@ class 主窗口(tk.Tk):
                   f"（{'含' if self.粗骨架开关.get() else '不含'}仅有治所的粗骨架）"
                   f"；骨架为几何推断，非考据边界")
 
+    def _切换底图(self):
+        """开关官方底图。打开时画布缩放会吸附到整数档位（底图只能按 m/n 缩放）。"""
+        if self.图谱 is None:
+            return
+        开 = self.底图开关.get()
+        self.图谱.设显示底图(开)
+        if 开 and self.图谱.底图层 is None:
+            self._设状态("官方底图不可用：" + ("；".join(self.图谱.底图问题[:1]) or "原因未知"))
+            return
+        if 开 and not self.图谱.底图层.可用():
+            self._设状态("官方底图不可用：" + self.图谱.底图层.缺图说明())
+            return
+        额外 = ("；缩放已吸附到整数档位以保证底图与州郡界对齐" if 开 else
+              "；缩放恢复自由（与以前一致）")
+        self._设状态(self.图谱.底图状态() + 额外)
+        if self.图谱.底图问题:
+            self._设状态(self.图谱.底图状态() + "；提示：" + self.图谱.底图问题[0])
+
     def 城池被点击(self, 城名):
         """在地图上点了某座城：弹出详情，并可直接发起与该城相关的行动。
 
@@ -872,6 +894,33 @@ def 自检():
             记(f"悬停命中抽检（{len(抽检)} 郡治所处应命中自身）", 命中合格)
             越界 = 窗口.图谱.命中郡(5, 5)
             记("画布角落处不命中任何郡", 越界 is None)
+
+        # —— 官方底图：配准可用 / 能画出来 / 在底层 / 关掉后干干净净 ——
+        图层 = 窗口.图谱.载入底图() if 窗口.图谱 is not None else None
+        if 图层 is None:
+            结果行.append("      · 官方底图不可用：" + "；".join(窗口.图谱.底图问题[:1])
+                        if 窗口.图谱 and 窗口.图谱.底图问题 else "      · 官方底图不可用")
+            记("官方底图（可选层）不可用时不影响其余功能", True)
+        else:
+            记(f"官方底图配准已载入：{图层.图像宽}×{图层.图像高}，"
+              f"1 图像像素 = {图层.世界每像素():.6f} 世界像素", 图层.可用())
+            缩放前 = 窗口.图谱.缩放
+            窗口.图谱.设显示底图(True)
+            窗口.update()
+            图项 = [项 for 项 in 窗口.图谱.find_all() if 窗口.图谱.type(项) == "image"]
+            记(f"打开底图后画布上有 {len(图项)} 张位图", len(图项) == 1)
+            倍率 = 图层.世界每像素() * 窗口.图谱.缩放
+            m, n, 精确 = 图层.吸附档位(倍率)
+            记(f"缩放已吸附到 {m}/{n} 档（精确 {精确:.6f}）", abs(精确 - 倍率) < 1e-9)
+            记("打开底图后底图位于最下层",
+               bool(图项) and 窗口.图谱.find_all()[0] == 图项[0])
+            窗口.图谱.设显示底图(False)
+            窗口.update()
+            记("关掉底图后画布上不再有位图",
+               not [项 for 项 in 窗口.图谱.find_all() if 窗口.图谱.type(项) == "image"])
+            窗口.图谱.缩放 = 缩放前
+            窗口.图谱.重绘()
+            窗口.update()
 
         # —— 地图：数据 / 渲染 / 命中 ——
         记(f"地图数据已载入：{len(窗口.地图数据['州'])} 州 · "
